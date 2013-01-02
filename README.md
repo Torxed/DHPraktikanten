@@ -4,6 +4,8 @@ DHPraktikanten
 DreamHack Support - queue and notification system
 (via sms, irc, skype, twitter or facebook)
 
+I run on: [Raspberry Pi Model-A](http://en.wikipedia.org/wiki/Raspberry_Pi) with Python-2.7.3
+
 
 Description:
 ------------
