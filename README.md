@@ -1,4 +1,4 @@
-DHPraktikanten
+DHPraktikanten ![Online status](http://mystatus.skype.com/bigclassic/DHSupport)
 ==============
 
 DreamHack Support - queue and notification system
