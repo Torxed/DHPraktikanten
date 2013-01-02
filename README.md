@@ -1,11 +1,18 @@
 DHPraktikanten
 ==============
 
-Dreamhack support queue and notification system
+DreamHack Support - queue and notification system
+(via sms, irc, skype, twitter or facebook)
 
 
 Description:
 ------------
+The idea is to speed up the support process for the DH users,
+instead of waiting 1-2 hours at the support booth for help,
+you'll get a queue ticket and a notification when it's your time to visit us.
+
+There's optional ways to report your issues, either directly at place or:
+
 ![Graphical representation](https://drive.google.com/uc?export=download&id=0B1eeO3A_DUEtNXBEYk9QWmlWbGc)
 
 A user can send in their issue via:
