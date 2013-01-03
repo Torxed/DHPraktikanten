@@ -1,0 +1,4 @@
+core = {
+	'sender' : None,
+	'outqueue' : {}
+}
