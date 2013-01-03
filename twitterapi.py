@@ -6,20 +6,25 @@ from os import _exit
 from time import sleep
 import unicodedata
 
+## Based on: https://github.com/sixohsix/twitter
+
 class twitt(Thread):
 	def __init__(self, tags = None, *args, **kwargs):
-		consumer_key = 'wBXgoew6UJ96o2QfqRNQw'
-		consumer_secret = 'yyF8pRTym9iq8p9GOxoQWBW3cRwVOInB8orQJUBKGo'
-		access_key = '20031095-7AbTJYc92UztxRIccQb8BosfYli5Ciu56IFbOboSM'
-		access_secret = 'NeisC3qwHEvgs7GUgGmFDEdFlxzYOAPhgztbMYMM'
+		self.consumer_key = ''
+		self.consumer_secret = ''
+		self.access_key = ''
+		self.access_secret = ''
+		self.OAuth_token = None
+		self.OAuth_secret = None
 
 		self.encoding = 'iso-8859-15'
 
 		self.args = args
 		self.kwargs = kwargs
+		self.loggedin = None
 
-		#self.api = twitter.Api(consumer_key=consumer_key, consumer_secret=consumer_secret, access_token_key=access_key, access_token_secret=access_secret, input_encoding=encoding)
 		self.searchapi = twitter.Twitter(domain="search.twitter.com").search
+		self.postapi = None
 
 		#self.info = self.api.VerifyCredentials()
 		#self.friends = self.api.GetFriends()
@@ -35,6 +40,15 @@ class twitt(Thread):
 
 		Thread.__init__(self)
 		self.start()
+
+		self.login()
+
+	def login(self):
+		self.loggedin = twitter.OAuth(self.access_key, self.access_secret, self.consumer_key, self.consumer_secret)
+		self.OAuth_token = self.loggedin.token
+		self.OAuth_secret = self.loggedin.token_secret
+
+		self.postapi = twitter.Twitter(auth=twitter.OAuth(self.OAuth_token, self.OAuth_secret, self.consumer_key, self.consumer_secret))
 
 	def refstr(self, what):
 		while len(what) > 0 and what[-1] in ('\r', '\n', ':', ' ', '	', '{', '}', '"', "'"):
@@ -87,6 +101,12 @@ class twitt(Thread):
 					self.reportback('(twitter) ' + str(result['from_user'] + ': ' + result['text']), self.args, self.kwargs)
 		self.initiatedreportback = True
 
+	def post(self, what):
+		if not self.postapi:
+			self.login()
+
+		self.postapi.statuses.update(status=what)
+
 	def returntag(self, tag, ammount=5):
 		searches = []
 		if not tag in self.searches:
@@ -108,10 +128,3 @@ class twitt(Thread):
 			#	print self.posts[_id].name,':',self.posts[_id].text
 			#	i += 1
 			#	if i >= 5: break
-
-	#	statuses = self.api.GetPublicTimeline()
-	#	print [s.user.name for s in statuses]
-
-	#	statuses = self.api.GetUserTimeline(self.info.id)
-	#	for status in statuses:
-	#		print statuses

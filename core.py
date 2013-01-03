@@ -1,7 +1,9 @@
 #!/usr/bin/python
 # -*- coding: iso-8859-15 -*-
 import traceback
-import twitt
+import twitterapi
+import irc_core
+import asyncore
 from socket import *
 from time import sleep
 from os import _exit as exit
@@ -17,17 +19,19 @@ from pickle import load
 ## * When accessing a db item, ANYTHING in core, access it through a get/set function
 ##   (the reason for this is to make sure that self.core['flags']['dblock'] is checked!)
 
-s = socket()
+__password__ = raw_input('Enter the master password: ')
 
-while 1:
-	try:
-		s.bind(('127.0.0.1', 8421))
-		break
-	except:
-		sleep(1)
-		continue
-print 'Listening!'
-s.listen(4)
+#s = socket()
+#
+#while 1:
+#	try:
+#		s.bind(('127.0.0.1', 8421))
+#		break
+#	except:
+#		sleep(1)
+#		continue
+#print 'Listening!'
+#s.listen(4)
 
 rows = {}
 for hall in ('A', 'B', 'C', 'D'):
@@ -100,24 +104,32 @@ core['pickle']['supportscheme'] = {
 core['pickle']['supportcases'] = []
 
 core['pickle_ignore'] = {}
-core['pickle_ignore']['twitter'] = twitt.twitt(['#DHSupport',])
+core['pickle_ignore']['twitter'] = twitterapi.twitt(['#DHSupport',])
+core['pickle_ignore']['irc'] = irc_core.irc({'password' : __password__})
+#core['pickle_ignore']['twitter'].post("I just fired up my twitter engine to take it for a spin!")
 
 garbageman = __import__('cycle')
 garbagehandle = garbageman.garbageman(core)
 garbagehandle.start()
 
-while 1:
-	try:
-		ns, na = s.accept()
-		clientmodule = __import__('clientmodule')
-		reload(clientmodule)
-		ch = clientmodule.clienthandle(ns, na, core)
-		ch.start()
-	except KeyboardInterrupt:
-		break
-	except Exception, e:
-		print e.message
-		print traceback.format_exc()
-		continue
-s.close()
+try:
+	while 1:
+		sleep(1)
+except:
+	pass
+print 'Exiting'
+#while 1:
+#	try:
+#		ns, na = s.accept()
+#		clientmodule = __import__('clientmodule')
+#		reload(clientmodule)
+#		ch = clientmodule.clienthandle(ns, na, core)
+#		ch.start()
+#	except KeyboardInterrupt:
+#		break
+#	except Exception, e:
+#		print e.message
+#		print traceback.format_exc()
+#		continue
+#s.close()
 exit(0)
