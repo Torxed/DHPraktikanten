@@ -2,7 +2,7 @@
 # -*- coding: iso-8859-15 -*-
 import traceback
 import twitterapi
-import irc_core
+import ircapi
 import asyncore
 from socket import *
 from time import sleep
@@ -105,7 +105,7 @@ core['pickle']['supportcases'] = []
 
 core['pickle_ignore'] = {}
 core['pickle_ignore']['twitter'] = twitterapi.twitt(['#DHSupport',])
-core['pickle_ignore']['irc'] = irc_core.irc({'password' : __password__})
+core['pickle_ignore']['irc'] = ircapi.irc({'password' : __password__})
 #core['pickle_ignore']['twitter'].post("I just fired up my twitter engine to take it for a spin!")
 
 garbageman = __import__('cycle')
