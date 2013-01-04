@@ -1,19 +1,35 @@
 #!/usr/bin/python
-# -*- coding: iso-8859-15 -*-
+# -*- coding: utf-8 -*-
 import twitter
+from config import core
 from threading import *
-from os import _exit
+from os import _exit, urandom
 from time import sleep
 import unicodedata
 
+## Crypto from: http://www.voidspace.org.uk/python/modules.shtml#pycrypto
+from Crypto.Cipher import AES
+import base64
+
 ## Based on: https://github.com/sixohsix/twitter
+
+def decrypt(what):
+	BLOCK_SIZE = 32
+	PADDING = '|'
+	p = core['pickle_ignore']['password']
+	DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(PADDING)
+	pad = lambda s: s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * PADDING
+	cipher = AES.new(pad(p))
+	decoded = DecodeAES(cipher, what)
+	return decoded
 
 class twitt(Thread):
 	def __init__(self, tags = None, *args, **kwargs):
-		self.consumer_key = ''
-		self.consumer_secret = ''
-		self.access_key = ''
-		self.access_secret = ''
+		self.consumer_key = decrypt(core['twitter']['consumer_key'])
+		self.consumer_secret = decrypt(core['twitter']['consumer_secret'])
+		self.access_key = decrypt(core['twitter']['access_key'])
+		self.access_secret = decrypt(core['twitter']['access_secret'])
+
 		self.OAuth_token = None
 		self.OAuth_secret = None
 
@@ -100,6 +116,7 @@ class twitt(Thread):
 
 					self.reportback('(twitter) ' + str(result['from_user'] + ': ' + result['text']), self.args, self.kwargs)
 		self.initiatedreportback = True
+		return self.searched
 
 	def post(self, what):
 		if not self.postapi:
@@ -128,3 +145,9 @@ class twitt(Thread):
 			#	print self.posts[_id].name,':',self.posts[_id].text
 			#	i += 1
 			#	if i >= 5: break
+
+if __name__ == "__main__":
+	core['pickle_ignore']['password'] = raw_input('Enter your master password: ')
+	t = twitt()
+	print t.search('#DHSupport')
+	t.alive = False
