@@ -12,6 +12,7 @@ from email.MIMEMultipart import MIMEMultipart
 from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
 from email import Encoders
+from getmail import *
 
 __date__ = '2013-01-07 15:10 CET'
 __version__ = '0.0.1'
@@ -32,6 +33,8 @@ else:
 	f.close()
 log('DB loaded')
 
+log('Getting mailinglist')
+mailinglist = getmailinglist(gmail_user, gmail_pwd)
 
 def refstr(s):
 	return s.strip(" \t:,\r\n\"'")
@@ -278,9 +281,6 @@ for e in events:
 		log('New event: ' + str(e))
 
 if len(new) > 0:
-	f =open('mailinglist_dh.txt', 'rb')
-	people = f.read().split('\n')
-	f.close()
 	if len(new) == 1:
 		m = 'A new event'
 		t = 'A new event on CC'
@@ -291,7 +291,7 @@ if len(new) > 0:
 	for item in new:
 		l += ' - ' + item + '\n'
 
-	for person in people:
+	for person in mailinglist:
 		if len(person) <= 0 or '@' not in person: continue
 
 		log('Sending mail to: ' + person)
