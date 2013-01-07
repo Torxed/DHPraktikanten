@@ -5,7 +5,7 @@ def refstr(s):
 	return s.strip(" \t:,\r\n\"'")
 
 def getfrom(data):
-	start = data.lower().find('from')
+	start = data.lower().find('from:')
 	end = data.find('\n',start)
 	_from = re.findall('[\w\-][\w\-\.]+@[\w\-][\w\-\.]+[a-zA-Z]{1,4}', refstr(data[start:end]))[0]
 	return _from
