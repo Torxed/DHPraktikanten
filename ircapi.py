@@ -5,6 +5,7 @@ from threading import *
 from socket import *
 from time import sleep, strftime, localtime, time
 from os import _exit
+from logger import *
 
 def _map():
 	return {}
@@ -38,7 +39,7 @@ class irc(Thread, asyncore.dispatcher):
 		self.messages = {}
 
 		if not 'server' in config:
-			print 'No server specified in config'
+			log('No server specified in config','IRC')
 			return None
 		if not 'port' in config:
 			self.conf['port'] = 6667
@@ -60,7 +61,7 @@ class irc(Thread, asyncore.dispatcher):
 		try:
 			self.connect((self.conf['server'], self.conf['port']))
 		except:
-			print 'Could not connect to',self.conf['server']
+			log('Could not connect to ' + str(self.conf['server']), 'IRC')
 			return None
 
 		self.buffer += 'NICK ' + self.conf['nickname'] + '\r\n'
@@ -149,7 +150,7 @@ class irc(Thread, asyncore.dispatcher):
 					elif code == '366':
 						_to, chan, row = row.split(' ',2)
 						chan = self.refstr(chan)
-						print len(self.channels[chan]['people']),'people in ' + chan
+						log(str(len(self.channels[chan]['people'])) + ' people in ' + chan,'IRC')
 
 					else:
 						pass
@@ -161,7 +162,7 @@ class irc(Thread, asyncore.dispatcher):
 	def readable(self):
 		return True
 	def handle_connect(self):
-		print 'Connected to', self.conf['server']
+		log('Connected to ' + str(self.conf['server']), 'IRC')
 	def handle_close(self):
 		self.close()
 	def handle_read(self):
@@ -188,10 +189,11 @@ class irc(Thread, asyncore.dispatcher):
 		self.buffer += what + '\r\n'
 		self.is_writable = True
 	def handle_error(self):
-		print 'Error, closing socket!'
+		log('Error, closing socket!', 'IRC')
 		self.close()
 
 	def run(self):
+		log('Engine started','IRC')
 		x = start()
 		while not self.exit:
 			if len(self.inbuffer) > 0:

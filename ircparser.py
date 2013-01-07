@@ -3,6 +3,18 @@
 from time import sleep, strftime, localtime, time
 from random import randint
 from config import core
+from logger import *
+
+class IrcCallback():
+	def __init__(self, sock, replychan, _who = ''):
+		self.s = sock
+		self.c = replychan
+		self.w = _who
+
+	def send(self, x):
+		if len(self.w) > 0:
+			self.w += ' '
+		self.s('PRIVMSG ' + self.c + ' :' + self.w + x)
 
 class ircparsers():
 	def __init__(self, sender, conf, channels):
@@ -86,12 +98,15 @@ class ircparsers():
 				if not self.conf['gun']['informed']:
 					self.send('PRIVMSG ' + replychan + ' :Gun is still warm from a fresh kill, and i don\'t like killing people anyways... so..')
 					self.conf['gun']['informed'] = True
+
 		elif msg[:] == '!reloadthegun':
 			self.conf['gun'] = {'fired' : 0, 'pos' : randint(1,6), 'total' : 6, 'emptied' : None, 'bullet' : randint(1,6)}
 			self.send('PRIVMSG ' + replychan + ' :Locked and loaded!')
 		else:
-			x = core['pickle_ignore']['parser']('irc', _who+'@'+self.conf['server'], msg)
+			x = core['pickle_ignore']['parser']('IRC', _who+'@'+self.conf['server'], msg, IrcCallback(self.send, replychan, _who))
 			if x == True:
+				pass
+			elif x == None:
 				pass
 			else:
 				self.send('PRIVMSG ' + replychan + ' :' + _who + ' ' + x)

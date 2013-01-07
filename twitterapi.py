@@ -5,6 +5,7 @@ from config import core
 from threading import *
 from os import _exit, urandom
 from time import sleep
+from logger import *
 import unicodedata
 
 ## Crypto from: http://www.voidspace.org.uk/python/modules.shtml#pycrypto
@@ -95,7 +96,11 @@ class twitt(Thread):
 
 	def search(self, tag):
 		i = 0
-		for result in self.searchapi(q=tag)['results']:
+		try:
+			results = self.searchapi(q=tag)['results']
+		except:
+			return {}
+		for result in results:
 		#for result in self.api.GetSearch(tag):
 		#	#print ''
 		#	#print result
@@ -133,6 +138,7 @@ class twitt(Thread):
 		return searches
 
 	def run(self):
+		log('Engine started','Twitter')
 		while self.alive:
 			#self.updateposts()
 			if self.tags:

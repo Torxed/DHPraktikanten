@@ -1,4 +1,5 @@
 from time import time, sleep, localtime, strftime
+from logger import *
 
 def humantime(t):
 	l = ['sec', 'min', 'hour', 'day']
@@ -42,6 +43,7 @@ class queue():
 
 		# - Settings -
 		self.settings = {'queuepos' : -1, 'notifypercentage' : 80} # -1 = first run and queue item #0 will be returned
+		log('Engine started','Queue')
 
 	def queuetime(self, which=None):
 		cats = {}
