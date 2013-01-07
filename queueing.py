@@ -9,40 +9,39 @@ def humantime(t):
 		i += 1
 	return t,l[i]
 
-
 class queue():
 	def __init__(self):
 
 		# - Queue -
 		self.q = {
-			0 : {
-				'source' : 'skype',
-				'identifier' : 'Torxed',
-				'task' : ('software', 'reinstall', 'I need to reinstall my pc'),
-				'times' : {'reg' : time()-(60*10), 'finished' : time()-(60*5), 'accepted' : time()-(60*10)},
-			},
-			1 : {
-				'source' : 'skype',
-				'identifier' : 'Torxed',
-				'task' : ('software', 'reinstall', 'I need to reinstall my pc'),
-				'times' : {'reg' : time(), 'finished' : None, 'accepted' : time()},
-			},
-			2 : {
-				'source' : 'skype',
-				'identifier' : 'Torxed',
-				'task' : ('software', 'reinstall', 'I need to reinstall my pc'),
-				'times' : {'reg' : time(), 'finished' : None, 'accepted' : None},
-			},
-			3 : {
-				'source' : 'skype',
-				'identifier' : 'Nelly',
-				'task' : ('software', 'reinstall', 'I need to reinstall my pc'),
-				'times' : {'reg' : time(), 'finished' : None, 'accepted' : None},
-			},
+			#0 : {
+			#	'source' : 'skype',
+			#	'identifier' : 'Torxed',
+			#	'task' : ('software', 'I need to reinstall my pc'),
+			#	'times' : {'reg' : time()-(60*10), 'finished' : time()-(60*5), 'accepted' : time()-(60*10)},
+			#},
+			#1 : {
+			#	'source' : 'skype',
+			#	'identifier' : 'Torxed',
+			#	'task' : ('software', 'I need to reinstall my pc'),
+			#	'times' : {'reg' : time(), 'finished' : None, 'accepted' : time()},
+			#},
+			#2 : {
+			#	'source' : 'skype',
+			#	'identifier' : 'Torxed',
+			#	'task' : ('software', 'I need to reinstall my pc'),
+			#	'times' : {'reg' : time(), 'finished' : None, 'accepted' : None},
+			#},
+			#3 : {
+			#	'source' : 'skype',
+			#	'identifier' : 'Nelly',
+			#	'task' : ('software', 'I need to reinstall my pc'),
+			#	'times' : {'reg' : time(), 'finished' : None, 'accepted' : None},
+			#},
 		}
 
 		# - Settings -
-		self.settings = {'queuepos' : 1, 'notifypercentage' : 80} # -1 = first run and queue item #0 will be returned
+		self.settings = {'queuepos' : -1, 'notifypercentage' : 80} # -1 = first run and queue item #0 will be returned
 
 	def queuetime(self, which=None):
 		cats = {}
@@ -75,6 +74,11 @@ class queue():
 			'task' : task,
 			'times' : {'reg' : time(), 'finished' : None, 'accepted' : None},
 		}
+		times = self.queuetime()
+		if len(times) == 0:
+			return 1, '2 min'
+		else:
+			return (len(self.q)+1) - self.settings['queuepos'], ''.join(humantime(times[task[0]]))
 
 	def notify(self, workers=2):
 		times = self.queuetime()
@@ -112,8 +116,8 @@ class queue():
 
 		if working < workers:
 			for i in range(self.settings['queuepos']+len(notify), self.settings['queuepos']+len(notify)+working+1):
-				if not int(i) in notify:
-					if not self.q[i]['times']['accepted']:
+				if not int(i) in notify and int(i) in self.q:
+					if not self.q[int(i)]['times']['accepted']:
 						print 'Appending #2 -',int(i),case
 						notify.append(int(i))
 
@@ -134,9 +138,3 @@ class queue():
 	def complete(self, _id):
 		if not self.q[_id]['times']['finished']:
 			self.q[_id]['times']['finished'] = time()
-		
-q = queue()
-print strftime('%H:%M:%S - started')
-while 1:
-	q.notify()
-	sleep(60*5+10)

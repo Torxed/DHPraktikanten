@@ -1,8 +1,15 @@
 #!/usr/bin/python
 # -*- coding: iso-8859-15 -*-
+
+## Import custom modules
+from config import core
+from queueing import *
 import traceback
-import twitt
-from socket import *
+import twitterapi
+import ircapi
+
+## Import Python specifics
+import asyncore
 from time import sleep
 from os import _exit as exit
 from os.path import isfile
@@ -17,107 +24,80 @@ from pickle import load
 ## * When accessing a db item, ANYTHING in core, access it through a get/set function
 ##   (the reason for this is to make sure that self.core['flags']['dblock'] is checked!)
 
-s = socket()
+__password__ = raw_input('Enter the master password: ')
 
-while 1:
-	try:
-		s.bind(('127.0.0.1', 8421))
-		break
-	except:
-		sleep(1)
-		continue
-print 'Listening!'
-s.listen(4)
+print strftime('%H:%M:%S - Initiating')
 
-rows = {}
-for hall in ('A', 'B', 'C', 'D'):
-	for i in range(1, 77):
-		if not hall in rows:
-			rows[hall] = {}
-		power = True
-		rows[hall][i] = {'power' : power, 'issues' : []}
-core = {'pickle' : {}}
 if isfile('dh_database.db'):
 	f = open('dh_database.db', 'rb')
 	try:
 		core['pickle'] = load(f)
-		print 'Loaded a stored database!'
+		print strftime('%H:%M:%S - Loaded a stored database!')
 	except:
 		print '!!! -> ERROR <- !!!'
 		print '  can not load db'
 		_exit(666)
 	f.close()
 
-if not 'rows' in core['pickle']:
-	core['pickle']['rows'] = rows
-if not 'prio' in core['pickle']:
-	core['pickle']['prio'] = []
-if not 'powerissues' in core['pickle']:
-	core['pickle']['powerissues'] = []
+core['pickle_ignore']['password'] = __password__
 
-if not 'flags' in core['pickle']:
-	core['pickle']['flags'] = {'dblock' : False}
+def parser(source, identifier, msg, respond = True):
+	print 'Parsing [' + source + '] ' + identifier + ' - ' + str(len(msg))
+	## Append everything sad from identifier into a conversation log.
+	if not identifier in core['pickle']['conversation']:
+		core['pickle']['conversation'][identifier] = ''
+	if not identifier in core['pickle']['stored_conversations']:
+		core['pickle']['stored_conversations'][identifier] = []
+	core['pickle']['conversation'][identifier] = core['pickle']['conversation'][identifier] + msg + '\n'
+	
+	ret = msg
 
-core['pickle']['quickpicks'] = {
-	1 : {'title' : 'PC doesn\'t boot at all',
-			'type' : 'hardware',
-		},
-	2 : {'title' : 'PC Boots but no image',
-			'type' : 'hardware',
-		},
-	3 : {'title' : 'Cleaning (dusty PC)',
-			'type' : 'hardware',
-		},
-	4 : {'title' : 'Software issue (game issue etc)',
-			'type' : 'software',
-		},
-	5 : {'title' : 'Hardware issue (weird image}, computer creashes etc)',
-			'type' : 'hardware',
-		},
-	6 : {'title' : 'Network issue (Bad or No connection at all)',
-			'type' : 'software',
-		},
-	7 : {'title' : 'Upgrade or Change in PC parts (hardware)',
-			'type' : 'hardware',
-		},
-	8 : {'title' : 'I have no idea what i\'m doing?!',
-			'type' : 'software',
-		},
-	0 : {'title' : 'Other stuff',
-			'type' : 'other',
-		},
-}
+	print core['pickle']['conversation'][identifier]
+	for item in ('problem with', 'problem med', 'min dator startar inte'):
+		if item in core['pickle']['conversation'][identifier].lower():
+			for t in ('hardware', 'hårdvara'):
+				if t in core['pickle']['conversation'][identifier].lower():
+					placeinqueue = core['pickle_ignore']['queue'].add(source, identifier, ('hardware', core['pickle']['conversation'][identifier]))
+					core['pickle']['stored_conversations'][identifier].append(core['pickle']['conversation'][identifier])
+					del core['pickle']['conversation'][identifier]
+					ret = 'Ok your place in the queue is: ' + str(placeinqueue[0]) + '! The ETA is roughly ' + str(placeinqueue[1])
+					return ret
 
-core['pickle']['supportscheme'] = {
-	'00' : {'end' : '08', 'tech' : ('aSyx', 'MiniErrA')},
-	'04' : {'end' : '12', 'tech' : ('ventris', 'vizze')},
-	'08' : {'end' : '16', 'tech' : ('Backeman', 'MattiasLj', 'Triggerhappy')},
-	'12' : {'end' : '20', 'tech' : ('Fughur', 'jalkmar', 'Käkben', 'level', 'Prozack')},
-	'16' : {'end' : '00', 'tech' : ('DD_Rambo', 'Donkey', 'fozzie', 'SUMMALAJNEN')},
-	'20' : {'end' : '04', 'tech' : ('DoXiD', 'Exxet', 'Jannibal', 'Miwca')}
-}
+			for t in ('software', 'mjukvara'):
+				if t in core['pickle']['conversation'][identifier].lower():
+					placeinqueue = core['pickle_ignore']['queue'].add(source, identifier, ('hardware', core['pickle']['conversation'][identifier]))
+					core['pickle']['stored_conversations'][identifier].append(core['pickle']['conversation'][identifier])
+					del core['pickle']['conversation'][identifier]
+					ret = 'Ok your place in the queue is: ' + str(placeinqueue[0]) + '! The ETA is roughly ' + str(placeinqueue[1])
+					return ret
 
-core['pickle']['supportcases'] = []
+			if ret == msg:
+				ret = 'Which type of problem is this? (hardware or software): '
 
-core['pickle_ignore'] = {}
-core['pickle_ignore']['twitter'] = twitt.twitt(['#DHSupport',])
+	if respond and ret != msg:
+		return ret
+	else:
+		return True
+
+
+
+core['pickle_ignore']['parser'] = parser
+core['pickle_ignore']['twitter'] = twitterapi.twitt(['#DHSupport',])
+core['pickle_ignore']['irc'] = ircapi.irc({'password' : __password__})
+core['pickle_ignore']['queue'] = queue()
 
 garbageman = __import__('cycle')
 garbagehandle = garbageman.garbageman(core)
 garbagehandle.start()
 
-while 1:
-	try:
-		ns, na = s.accept()
-		clientmodule = __import__('clientmodule')
-		reload(clientmodule)
-		ch = clientmodule.clienthandle(ns, na, core)
-		ch.start()
-	except KeyboardInterrupt:
-		break
-	except Exception, e:
-		print e.message
-		print traceback.format_exc()
-		continue
-s.close()
+print strftime('%H:%M:%S - started')
+
+try:
+	while 1:
+		core['pickle_ignore']['queue'].notify()
+		sleep(1)
+except:
+	pass
+print 'Exiting'
+
 exit(0)

@@ -173,3 +173,30 @@ class clienthandle(Thread):
 				self.sock.close()
 			except:
 				pass
+
+#s = socket()
+#
+#while 1:
+#	try:
+#		s.bind(('127.0.0.1', 8421))
+#		break
+#	except:
+#		sleep(1)
+#		continue
+#print 'Listening!'
+#s.listen(4)
+
+#while 1:
+#	try:
+#		ns, na = s.accept()
+#		clientmodule = __import__('clientmodule')
+#		reload(clientmodule)
+#		ch = clientmodule.clienthandle(ns, na, core)
+#		ch.start()
+#	except KeyboardInterrupt:
+#		break
+#	except Exception, e:
+#		print e.message
+#		print traceback.format_exc()
+#		continue
+#s.close()

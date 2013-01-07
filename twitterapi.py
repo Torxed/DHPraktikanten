@@ -1,25 +1,46 @@
 #!/usr/bin/python
-# -*- coding: iso-8859-15 -*-
+# -*- coding: utf-8 -*-
 import twitter
+from config import core
 from threading import *
-from os import _exit
+from os import _exit, urandom
 from time import sleep
 import unicodedata
 
+## Crypto from: http://www.voidspace.org.uk/python/modules.shtml#pycrypto
+from Crypto.Cipher import AES
+import base64
+
+## Based on: https://github.com/sixohsix/twitter
+
+def decrypt(what):
+	BLOCK_SIZE = 32
+	PADDING = '|'
+	p = core['pickle_ignore']['password']
+	DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(PADDING)
+	pad = lambda s: s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * PADDING
+	cipher = AES.new(pad(p))
+	decoded = DecodeAES(cipher, what)
+	return decoded
+
 class twitt(Thread):
 	def __init__(self, tags = None, *args, **kwargs):
-		consumer_key = 'wBXgoew6UJ96o2QfqRNQw'
-		consumer_secret = 'yyF8pRTym9iq8p9GOxoQWBW3cRwVOInB8orQJUBKGo'
-		access_key = '20031095-7AbTJYc92UztxRIccQb8BosfYli5Ciu56IFbOboSM'
-		access_secret = 'NeisC3qwHEvgs7GUgGmFDEdFlxzYOAPhgztbMYMM'
+		self.consumer_key = decrypt(core['twitter']['consumer_key'])
+		self.consumer_secret = decrypt(core['twitter']['consumer_secret'])
+		self.access_key = decrypt(core['twitter']['access_key'])
+		self.access_secret = decrypt(core['twitter']['access_secret'])
+
+		self.OAuth_token = None
+		self.OAuth_secret = None
 
 		self.encoding = 'iso-8859-15'
 
 		self.args = args
 		self.kwargs = kwargs
+		self.loggedin = None
 
-		#self.api = twitter.Api(consumer_key=consumer_key, consumer_secret=consumer_secret, access_token_key=access_key, access_token_secret=access_secret, input_encoding=encoding)
 		self.searchapi = twitter.Twitter(domain="search.twitter.com").search
+		self.postapi = None
 
 		#self.info = self.api.VerifyCredentials()
 		#self.friends = self.api.GetFriends()
@@ -35,6 +56,15 @@ class twitt(Thread):
 
 		Thread.__init__(self)
 		self.start()
+
+		self.login()
+
+	def login(self):
+		self.loggedin = twitter.OAuth(self.access_key, self.access_secret, self.consumer_key, self.consumer_secret)
+		self.OAuth_token = self.loggedin.token
+		self.OAuth_secret = self.loggedin.token_secret
+
+		self.postapi = twitter.Twitter(auth=twitter.OAuth(self.OAuth_token, self.OAuth_secret, self.consumer_key, self.consumer_secret))
 
 	def refstr(self, what):
 		while len(what) > 0 and what[-1] in ('\r', '\n', ':', ' ', '	', '{', '}', '"', "'"):
@@ -86,6 +116,13 @@ class twitt(Thread):
 
 					self.reportback('(twitter) ' + str(result['from_user'] + ': ' + result['text']), self.args, self.kwargs)
 		self.initiatedreportback = True
+		return self.searched
+
+	def post(self, what):
+		if not self.postapi:
+			self.login()
+
+		self.postapi.statuses.update(status=what)
 
 	def returntag(self, tag, ammount=5):
 		searches = []
@@ -109,9 +146,8 @@ class twitt(Thread):
 			#	i += 1
 			#	if i >= 5: break
 
-	#	statuses = self.api.GetPublicTimeline()
-	#	print [s.user.name for s in statuses]
-
-	#	statuses = self.api.GetUserTimeline(self.info.id)
-	#	for status in statuses:
-	#		print statuses
+if __name__ == "__main__":
+	core['pickle_ignore']['password'] = raw_input('Enter your master password: ')
+	t = twitt()
+	print t.search('#DHSupport')
+	t.alive = False

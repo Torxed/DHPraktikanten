@@ -12,8 +12,28 @@ def _array():
 	return []
 
 class irc(Thread, asyncore.dispatcher):
-	def __init__(self, config):
+	def __init__(self, config=None):
 		self.conf = config
+		if not self.conf:
+			self.conf = {}
+		if not 'server' in self.conf:
+			self.conf['server'] = 'irc.se.quakenet.org'
+		if not 'port' in self.conf:
+			self.conf['port'] = 6667
+		if not 'nickname' in self.conf:
+			self.conf['nickname'] = 'DHPraktikanten'
+		if not 'userid' in self.conf:
+			self.conf['userid'] = 'DHPraktikanten'
+		if not 'fullname' in self.conf:
+			self.conf['fullname'] = 'Kaylee Frye'
+		if not 'channels' in self.conf:
+			self.conf['channels'] = ['#dhsupport', '#dreamhack']
+		if not 'password' in self.conf:
+			try:
+				self.conf['password'] = __password__
+			except:
+				self.conf['password'] = raw_input('Enter your IRC password: ')
+
 		self.channels = {}
 		self.messages = {}
 
@@ -31,7 +51,7 @@ class irc(Thread, asyncore.dispatcher):
 		self.MOTD = None
 		self.exit = False
 
-		self.ircparsers = __import__('ircparsers')
+		self.ircparsers = __import__('ircparser')
 
 		asyncore.dispatcher.__init__(self)
 		Thread.__init__(self)
@@ -45,6 +65,9 @@ class irc(Thread, asyncore.dispatcher):
 
 		self.buffer += 'NICK ' + self.conf['nickname'] + '\r\n'
 		self.buffer += 'USER ' + self.conf['userid'] + ' ' + self.conf['server'] + ' ' + self.conf['nickname'] + ' :' + self.conf['fullname'] + '\r\n'
+
+		self.is_writable = True
+		self.start()
 
 	def refstr(self, what):
 		while len(what) > 0 and what[-1] in ('\r', '\n', ':', ' ', '	'):
@@ -61,6 +84,8 @@ class irc(Thread, asyncore.dispatcher):
 	def parse(self):
 		if self.inbuffer[-2:] != '\r\n':
 			return False
+		## -- To enable ALL irc output/input, uncomment:
+		# print self.inbuffer
 		self.lockedbuffer = True
 
 		for row in self.inbuffer.split('\r\n'):
@@ -153,7 +178,8 @@ class irc(Thread, asyncore.dispatcher):
 		while self.is_writable:
 			sent = self.send(self.buffer)
 			sleep(1)
-			#print '>> ' + str([self.buffer[:sent]])
+			## -- To enable all Output/Input of IRC, uncomment this line:
+			# print '>> ' + str([self.buffer[:sent]])
 			self.buffer = self.buffer[sent:]
 			if len(self.buffer) <= 0:
 				self.is_writable = False
@@ -166,45 +192,16 @@ class irc(Thread, asyncore.dispatcher):
 		self.close()
 
 	def run(self):
+		x = start()
 		while not self.exit:
 			if len(self.inbuffer) > 0:
 				self.parse()
 			sleep(0.01)
 		self.close()
 
-class commandline(Thread):
-	def __init__(self, sock):
+class start(Thread):
+	def __init__(self):
 		Thread.__init__(self)
-		self.socks = sock
-		self.server = None
-
+		self.start()
 	def run(self):
-		while 1:
-			if self.server and self.server in self.socks:
-				cmd = raw_input(self.socks[self.server]['name'] + ': ')
-			else:
-				cmd = raw_input('')
-			if cmd == 'exit' or cmd == 'quit':
-				for server in self.socks:
-					self.socks[server]['sock'].exit = True
-				break
-			else:
-				if cmd[0] == ':':
-					if cmd[1] in self.socks:
-						self.server = cmd[1]
-				else:
-					if self.server and self.server in self.socks:
-						self.socks[self.server]['sock']._send(cmd)
-					else:
-						print ' <- Please select a server'
-
-quakenet = irc({'server' : 'irc.se.quakenet.org', 'port' : 6667, 'nickname' : 'DHPraktikanten', 'userid' : 'DHPraktikanten', 'fullname' : 'Kaylee Frye', 'channels' : ['#dhsupport', '#dreamhack'], 'password' : __password__})
-quakenet.start()
-
-servers = {'q' : {'name' : 'QuakeNet', 'sock' : quakenet},
-			'f' : {'name' : 'FreeNode', 'sock' : freenode}}
-
-c = commandline(servers)
-c.start()
-
-asyncore.loop(0.1)
+		asyncore.loop(0.1)
