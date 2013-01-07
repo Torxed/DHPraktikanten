@@ -9,15 +9,19 @@ import traceback
 import twitterapi
 import ircapi
 import skypeapi
+import mailapi
+import ccoapi
 
 ## Import Python specifics
-import asyncore
+import asyncore, base64
 from getpass import getpass
+from threading import enumerate
 from time import sleep
 from os import getpid, remove
 from os import _exit as exit
 from os.path import isfile
 from pickle import load
+from Crypto.Cipher import AES
 
 ## ==== TODO
 ## * Replace the simple socket with a asyncronous socket! (irc.py got one)
@@ -33,6 +37,20 @@ if isfile('/var/tmp/praktikanten.pid'):
 	exit(1)
 __password__ = getpass('Enter the master password: ')
 
+def pad(s):
+	pos = 0
+	BLOCK_SIZE = 32
+	while len(s) < BLOCK_SIZE:
+		s += core['pickle_ignore']['password'][pos]
+		pos = (pos +1)%len(core['pickle_ignore']['password'])-1
+	return s
+def decrypt(what):
+	p = core['pickle_ignore']['password']
+	DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(p)
+	cipher = AES.new(pad(p))
+	decoded = DecodeAES(cipher, what)
+	return decoded
+
 log('Initiating')
 
 if isfile('dh_database.db'):
@@ -46,6 +64,13 @@ if isfile('dh_database.db'):
 	f.close()
 
 core['pickle_ignore']['password'] = __password__
+
+## Decrypt loaded encrypted passwords
+## (so that the modules can use it)
+core['email']['user'] = decrypt(core['email']['user'])
+core['email']['pass'] = decrypt(core['email']['pass'])
+core['cco']['user'] = decrypt(core['cco']['user'])
+core['cco']['pass'] = decrypt(core['cco']['pass'])
 
 def parser(source, identifier, msg, respond = None):
 	log('Parsing: ' + identifier + ' - ' + str(len(msg)), source)
@@ -82,14 +107,13 @@ def parser(source, identifier, msg, respond = None):
 	else:
 		return True
 
-
-
 core['pickle_ignore']['parser'] = parser
 core['pickle_ignore']['twitter'] = twitterapi.twitt(['#DHSupport',])
 core['pickle_ignore']['irc'] = ircapi.irc({'password' : __password__})
 core['pickle_ignore']['queue'] = queue()
 core['pickle_ignore']['skype'] = skypeapi.Skype()
-
+core['pickle_ignore']['email'] = mailapi.Mail()
+core['pickle_ignore']['cco'] = ccoapi.CCO()
 
 garbageman = __import__('cycle')
 garbagehandle = garbageman.garbageman(core)
@@ -109,4 +133,11 @@ except:
 	pass
 log('Exiting','Core')
 remove('/var/tmp/praktikanten.pid')
+
+for t in enumerate():
+	try:
+		t._Thread__delete()
+	except:
+		pass
+
 exit(0)
