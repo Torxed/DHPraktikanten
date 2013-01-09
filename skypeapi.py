@@ -33,13 +33,7 @@ class Skype(Thread):
 		Thread.__init__(self)
 		self.alive = True
 
-		if sys.platform.startswith('linux'):
-			self.s = Skype4Py.Skype(Transport=os.environ.get('HUBOT_SKYPE_TRANSPORT', 'x11'))
-		else:
-			self.s = Skype4Py.Skype()
-
-		self.s.OnMessageStatus = self.on_message
-		self.s.Attach()
+		self.s = None
 
 		self.start()
 
@@ -120,7 +114,21 @@ class Skype(Thread):
 		else:
 			log('Unknown message','Skype')
 	def run(self):
-		log('Engine started','Skype')
+		while self.s == None:
+			if sys.platform.startswith('linux'):
+				self.s = Skype4Py.Skype(Transport=os.environ.get('HUBOT_SKYPE_TRANSPORT', 'x11'))
+			else:
+				self.s = Skype4Py.Skype()
+
+			self.s.OnMessageStatus = self.on_message
+			try:
+				self.s.Attach()
+				log('Engine started','Skype')
+				break
+			except:
+				log(' {FAIL} Engine could not start','Skype')
+				self.s = None
+				sleep(60)
 		while 1:
 			sleep(0.1)
 

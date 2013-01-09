@@ -39,11 +39,13 @@ __password__ = getpass('Enter the master password: ')
 
 def pad(s):
 	pos = 0
+	p = core['pickle_ignore']['password']
 	BLOCK_SIZE = 32
-	while len(s) < BLOCK_SIZE:
-		s += core['pickle_ignore']['password'][pos]
-		pos = (pos +1)%len(core['pickle_ignore']['password'])-1
+	while float(len(s))/float(BLOCK_SIZE) not in (1.0, 2.0, 3.0):
+		s += p[pos]
+		pos = (pos +1)%(len(p))
 	return s
+	
 def decrypt(what):
 	p = core['pickle_ignore']['password']
 	DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(p)
@@ -69,8 +71,6 @@ core['pickle_ignore']['password'] = __password__
 ## (so that the modules can use it)
 core['email']['user'] = decrypt(core['email']['user'])
 core['email']['pass'] = decrypt(core['email']['pass'])
-core['cco']['user'] = decrypt(core['cco']['user'])
-core['cco']['pass'] = decrypt(core['cco']['pass'])
 
 def parser(source, identifier, msg, respond = None):
 	log('Parsing: ' + identifier + ' - ' + str(len(msg)), source)

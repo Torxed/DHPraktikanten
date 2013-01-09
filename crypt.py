@@ -2,32 +2,32 @@
 
 from Crypto.Cipher import AES
 from getpass import getpass
-import base64
+from base64 import *
 import os, sys
 
 # the block size for the cipher object; must be 16, 24, or 32 for AES
 BLOCK_SIZE = 32
 
 # generate a random secret key
-secret = getpass('Enter your master password: ')
+p = getpass('Enter your master password: ')
 
 def pad(s):
 	pos = 0
-	while len(s) < BLOCK_SIZE:
-		s += secret[pos]
-		pos = (pos +1)%len(secret)-1
+	while float(len(s))/float(BLOCK_SIZE) not in (1.0, 2.0, 3.0):
+		s += p[pos]
+		pos = (pos +1)%(len(p))
 	return s
 
-# one-liners to encrypt/encode and decrypt/decode a string
-# encrypt with AES, encode with base64
-EncodeAES = lambda c, s: base64.b64encode(c.encrypt(pad(s)))
-DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(secret)
+def EncodeAES(c, s):
+	return b64encode(c.encrypt(pad(s)))
 
-# create a cipher object using the random secret
-cipher = AES.new(pad(secret))
+def DecodeAES(c, s):
+	return c.decrypt(b64decode(s)).replace(p,'')
+
+cipher = AES.new(pad(p))
 
 # encode a string
-encoded = EncodeAES(cipher, sys.argv[1])
+encoded = EncodeAES(cipher, pad(sys.argv[1]))
 print 'Encrypted string:', encoded
 
 # decode the encoded string
