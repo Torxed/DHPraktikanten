@@ -22,6 +22,7 @@ from os import _exit as exit
 from os.path import isfile
 from pickle import load
 from Crypto.Cipher import AES
+from helpers import *
 
 ## ==== TODO
 ## * Replace the simple socket with a asyncronous socket! (irc.py got one)
@@ -36,22 +37,6 @@ if isfile('/var/tmp/praktikanten.pid'):
 	log('Dreamhack Praktikanten is already running!', 'Core')
 	exit(1)
 __password__ = getpass('Enter the master password: ')
-
-def pad(s):
-	pos = 0
-	p = core['pickle_ignore']['password']
-	BLOCK_SIZE = 32
-	while float(len(s))/float(BLOCK_SIZE) not in (1.0, 2.0, 3.0):
-		s += p[pos]
-		pos = (pos +1)%(len(p))
-	return s
-	
-def decrypt(what):
-	p = core['pickle_ignore']['password']
-	DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(p)
-	cipher = AES.new(pad(p))
-	decoded = DecodeAES(cipher, what)
-	return decoded
 
 log('Initiating')
 
@@ -108,10 +93,10 @@ def parser(source, identifier, msg, respond = None):
 		return True
 
 core['pickle_ignore']['parser'] = parser
-core['pickle_ignore']['twitter'] = twitterapi.twitt(['#DHSupport',])
-core['pickle_ignore']['irc'] = ircapi.irc({'password' : __password__})
-core['pickle_ignore']['queue'] = queue()
-core['pickle_ignore']['skype'] = skypeapi.Skype()
+#core['pickle_ignore']['twitter'] = twitterapi.twitt(['#DHSupport',])
+#core['pickle_ignore']['irc'] = ircapi.irc({'password' : __password__})
+#core['pickle_ignore']['queue'] = queue()
+#core['pickle_ignore']['skype'] = skypeapi.Skype()
 core['pickle_ignore']['email'] = mailapi.Mail()
 core['pickle_ignore']['cco'] = ccoapi.CCO()
 

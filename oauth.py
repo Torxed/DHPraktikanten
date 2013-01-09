@@ -100,7 +100,11 @@ class OAuth():
 
 		datahandle._Thread__stop()
 		#datahandle._Thread__delete()
-		headers, d = data.split('\r\n\r\n')
+		try:
+			headers, d = data.split('\r\n\r\n')
+		except:
+			print [data]
+			return {}
 
 		for row in headers.split('\r\n'):
 			if len(row) <= 0: continue

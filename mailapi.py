@@ -19,7 +19,7 @@ class Mail():
 	def __init__(self):
 		log('Engine started', 'Email')
 
-	def send(to, subject, text, attach=None):
+	def send(self, to, subject, text, attach=None):
 		msg = MIMEMultipart()
 
 		msg['From'] = core['email']['user']
@@ -65,7 +65,7 @@ class Mail():
 			if msg_data:
 				for item in msg_data:
 					if 'from' in item.lower():
-						people.append(getfrom(item))
+						people.append((getfrom(item), item))
 
 			i += 1
 		return people

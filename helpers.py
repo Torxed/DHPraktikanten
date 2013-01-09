@@ -33,9 +33,16 @@ def pad(s):
 
 def decrypt(what):
 	p = core['pickle_ignore']['password']
-	DecodeAES = lambda c, e: c.decrypt(b64decode(e)).replace(p,'')
+
+	DecodeAES = lambda c, e: c.decrypt(b64decode(e))
 	cipher = AES.new(pad(p))
 	decoded = DecodeAES(cipher, what)
+
+	passstringbuildup = ''
+	for c in p:
+		passstringbuildup += c
+		while decoded[0-len(passstringbuildup):] == passstringbuildup:
+			decoded = decoded[:0-len(passstringbuildup)]
 	return decoded
 
 def urlfix(s):
