@@ -35,15 +35,20 @@ class CCO(Thread):
 
 	def login(self):
 		tokens = self.OAuth.get() # Defaults to requesting the tokens
+		if len(tokens) <= 0:
+			return None
 		core['cco']['access_key'] = tokens['oauth_token']
 		core['cco']['access_secret'] = tokens['oauth_token_secret']
+		return True
 
 	def run(self):
 		if not 'CCO_events' in core['pickle']:
 			core['pickle']['CCO_events'] = []
 
 		if core['cco']['access_key'] == '':
-			self.login()
+			if not self.login():
+				log('Could not login, no keys defined', 'CCO')
+				return None
 
 		while 1:
 			new = []
@@ -90,7 +95,7 @@ class CCO(Thread):
 						body += '\n\n\n\nTo unsubscribe, send a e-mail (containing what ever) to: anton.doxid+unwatch@gmail.com!'
 
 					if len(body) > 0:
-						core['pickle_ignore']['email'].send(person, t, body)
+						print 'Mailing',person#core['pickle_ignore']['email'].send(person, t, body)
 
 			sleep(60)
 

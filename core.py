@@ -8,9 +8,10 @@ from logger import *
 import traceback
 import twitterapi
 import ircapi
-import skypeapi
+#import skypeapi
 import mailapi
 import ccoapi
+import backend
 
 ## Import Python specifics
 import asyncore, base64
@@ -33,7 +34,10 @@ from helpers import *
 ## * When accessing a db item, ANYTHING in core, access it through a get/set function
 ##   (the reason for this is to make sure that self.core['flags']['dblock'] is checked!)
 
-if isfile('/var/tmp/praktikanten.pid'):
+#pid = '/var/tmp/praktikanten.pid'
+pidfile = './praktikanten.pid'
+
+if isfile(pidfile):
 	log('Dreamhack Praktikanten is already running!', 'Core')
 	exit(1)
 __password__ = getpass('Enter the master password: ')
@@ -94,7 +98,8 @@ def parser(source, identifier, msg, respond = None):
 
 core['pickle_ignore']['parser'] = parser
 #core['pickle_ignore']['twitter'] = twitterapi.twitt(['#DHSupport',])
-#core['pickle_ignore']['irc'] = ircapi.irc({'password' : __password__})
+core['pickle_ignore']['irc'] = ircapi.irc({'password' : __password__})
+core['pickle_ignore']['backend'] = backend.main()
 #core['pickle_ignore']['queue'] = queue()
 #core['pickle_ignore']['skype'] = skypeapi.Skype()
 core['pickle_ignore']['email'] = mailapi.Mail()
@@ -105,7 +110,7 @@ garbagehandle = garbageman.garbageman(core)
 garbagehandle.start()
 
 pid = getpid()
-f = open('/var/tmp/praktikanten.pid', 'wb')
+f = open(pidfile, 'wb')
 f.write(str(pid))
 f.close()
 
@@ -117,7 +122,7 @@ try:
 except:
 	pass
 log('Exiting','Core')
-remove('/var/tmp/praktikanten.pid')
+remove(pidfile)
 
 for t in enumerate():
 	try:

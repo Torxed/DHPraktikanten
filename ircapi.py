@@ -180,7 +180,7 @@ class irc(Thread, asyncore.dispatcher):
 			sent = self.send(self.buffer)
 			sleep(1)
 			## -- To enable all Output/Input of IRC, uncomment this line:
-			# print '>> ' + str([self.buffer[:sent]])
+			#print '>> ' + str([self.buffer[:sent]])
 			self.buffer = self.buffer[sent:]
 			if len(self.buffer) <= 0:
 				self.is_writable = False
@@ -194,7 +194,7 @@ class irc(Thread, asyncore.dispatcher):
 
 	def run(self):
 		log('Engine started','IRC')
-		x = start()
+		#x = start()
 		while not self.exit:
 			if len(self.inbuffer) > 0:
 				self.parse()

@@ -6,6 +6,7 @@ from hashlib import sha1
 from urllib import quote
 from getpass import getpass
 from helpers import *
+from logger import log
 import json
 import hmac
 
@@ -81,7 +82,10 @@ class OAuth():
 		requeststring += '\r\n' #Ending headers
 
 		s = socket()
-		s.connect((self.host, 80))
+		try:
+			s.connect((self.host, 80))
+		except:
+			return {}
 		s.send(requeststring)
 
 		datahandle = nonblockingrecieve(s)
@@ -97,6 +101,9 @@ class OAuth():
 			else:
 				loops += 1
 			sleep(0.25)
+		if data == '':
+			log('Server didn\'t respond in a timefly fashion', 'OAuth')
+			return {}
 
 		datahandle._Thread__stop()
 		#datahandle._Thread__delete()

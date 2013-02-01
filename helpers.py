@@ -17,7 +17,7 @@ def getEvents(data):
 	return evlist
 
 def uniqueueid(l = 22):
-	s = strftime('%Y-%h-%m %H:%M:%S')
+	s = strftime('%Y-%d-%m %H:%M:%S')
 	while len(s) < l:
 		s += str(randint(0,1000))
 	return b64encode(s)
@@ -30,6 +30,14 @@ def pad(s):
 		s += p[pos]
 		pos = (pos +1)%(len(p))
 	return s
+
+def encrypt(what):
+	p = core['pickle_ignore']['password']
+
+	EncodeAES = lambda c, s: b64encode(c.encrypt(pad(s)))
+
+	cipher = AES.new(pad(p))
+	return EncodeAES(cipher, what)
 
 def decrypt(what):
 	p = core['pickle_ignore']['password']
@@ -66,3 +74,8 @@ class nonblockingrecieve(Thread):
 				break
 			self.data += d
 			self.lastupdate = time()
+
+if __name__ == '__main__':
+	import sys
+	core['pickle_ignore']['password'] = raw_input('Enter master password: ')
+	print sys.argv[1],'=',encrypt(sys.argv[1])

@@ -25,7 +25,7 @@ class ircparsers():
 	def refstr(self, what):
 		while len(what) > 0 and what[-1] in ('\r', '\n', ':', ' ', '	'):
 			what = what[:-1]
-		while len(what) > 0 and what[0] in ('\r', '\n', ':', ' ', '	'):	
+		while len(what) > 0 and what[0] in ('\r', '\n', ':', ' ', '	'):
 			what = what[1:]
 		return what
 
@@ -58,6 +58,12 @@ class ircparsers():
 		channel = self.refstr(channel)
 		msg = msg[1:]
 		replychan = channel
+		if not 'logs' in core['pickle_ignore']:
+			core['pickle_ignore']['logs'] = {}
+		if not 'irc' in core['pickle_ignore']['logs']:
+			core['pickle_ignore']['logs']['irc'] = []
+		core['pickle_ignore']['logs']['irc'].append((_who+'@'+channel, msg))
+
 		if channel == self.conf['nickname']:
 			print _who + ': ' + msg
 			replychan = _who

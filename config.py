@@ -12,9 +12,9 @@ core = {
 				'pass' : '',},
 				
 	'cco' : {'consumer_key' : '',
-			'consumer_secret' : '',
-			'access_key' : '',
-			'access_secret' : '',},
+				'consumer_secret' : '',
+				'access_key' : '',
+				'access_secret' : '',},
 
 	'twitter' : {'consumer_key' : '',
 				'consumer_secret' : '',
