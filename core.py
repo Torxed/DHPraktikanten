@@ -58,8 +58,8 @@ core['pickle_ignore']['password'] = __password__
 
 ## Decrypt loaded encrypted passwords
 ## (so that the modules can use it)
-core['email']['user'] = decrypt(core['email']['user'])
-core['email']['pass'] = decrypt(core['email']['pass'])
+#core['email']['user'] = decrypt(core['email']['user'])
+#core['email']['pass'] = decrypt(core['email']['pass'])
 
 def parser(source, identifier, msg, respond = None):
 	log('Parsing: ' + identifier + ' - ' + str(len(msg)), source)
@@ -74,22 +74,35 @@ def parser(source, identifier, msg, respond = None):
 
 	for item in ('problem with', 'problem med', 'min dator startar inte'):
 		if item in core['pickle']['conversation'][identifier].lower():
+
+			if not identifier in core['pickle']['conversation']:
+				break
+
 			for t in ('hardware', 'hårdvara'):
 				if t in core['pickle']['conversation'][identifier].lower():
 					placeinqueue = core['pickle_ignore']['queue'].add(source, identifier, ('hardware', core['pickle']['conversation'][identifier]))
 					core['pickle']['stored_conversations'][identifier].append(core['pickle']['conversation'][identifier])
 					del core['pickle']['conversation'][identifier]
 					ret = 'Ok your place in the queue is: ' + str(placeinqueue[0]) + '! The ETA is roughly ' + str(placeinqueue[1])
+					break
+
+			if not identifier in core['pickle']['conversation']:
+				break
 
 			for t in ('software', 'mjukvara'):
+				if not identifier in core['pickle']['conversation']:
+					break
 				if t in core['pickle']['conversation'][identifier].lower():
 					placeinqueue = core['pickle_ignore']['queue'].add(source, identifier, ('hardware', core['pickle']['conversation'][identifier]))
 					core['pickle']['stored_conversations'][identifier].append(core['pickle']['conversation'][identifier])
 					del core['pickle']['conversation'][identifier]
 					ret = 'Ok your place in the queue is: ' + str(placeinqueue[0]) + '! The ETA is roughly ' + str(placeinqueue[1])
+					break
 
 			if ret == msg:
 				ret = 'Which type of problem is this? (hardware or software): '
+		if not identifier in core['pickle']['conversation']:
+			break
 
 	if respond and ret != msg:
 		respond.send(ret)
@@ -100,7 +113,7 @@ core['pickle_ignore']['parser'] = parser
 #core['pickle_ignore']['twitter'] = twitterapi.twitt(['#DHSupport',])
 core['pickle_ignore']['irc'] = ircapi.irc({'password' : __password__})
 core['pickle_ignore']['backend'] = backend.main()
-#core['pickle_ignore']['queue'] = queue()
+core['pickle_ignore']['queue'] = queue()
 #core['pickle_ignore']['skype'] = skypeapi.Skype()
 core['pickle_ignore']['email'] = mailapi.Mail()
 core['pickle_ignore']['cco'] = ccoapi.CCO()

@@ -5,6 +5,7 @@ from email.MIMEMultipart import MIMEMultipart
 from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
 from email import Encoders
+from helpers import *
 
 def refstr(s):
 	return s.strip(" \t:,\r\n\"'")
@@ -22,7 +23,7 @@ class Mail():
 	def send(self, to, subject, text, attach=None):
 		msg = MIMEMultipart()
 
-		msg['From'] = core['email']['user']
+		msg['From'] = decrypt(core['email']['user'])
 		msg['To'] = to
 		msg['Subject'] = subject
 
@@ -40,8 +41,8 @@ class Mail():
 		mailServer.ehlo()
 		mailServer.starttls()
 		mailServer.ehlo()
-		mailServer.login(core['email']['user'], core['email']['pass'])
-		mailServer.sendmail(core['email']['user'], to, msg.as_string())
+		mailServer.login(decrypt(core['email']['user']), decrypt(core['email']['pass']))
+		mailServer.sendmail(decrypt(core['email']['user']), to, msg.as_string())
 		log('Sending e-mail to ' + to,'Email')
 		# Should be mailServer.quit(), but that crashes...
 		mailServer.close()
@@ -51,7 +52,7 @@ class Mail():
 	def getmailinglist(self):
 		people = []
 		mail = imaplib.IMAP4_SSL('imap.gmail.com')
-		mail.login(core['email']['user'], core['email']['pass'])
+		mail.login(decrypt(core['email']['user']), decrypt(core['email']['pass']))
 		#listoflables = mail.list()
 		mail.select('Watchdog')
 

@@ -84,18 +84,24 @@ class main(Thread, asyncore.dispatcher):
 
 	def parse(self):
 		self.lockedbuffer = True
-
-		# Parse data
-		if 'get::history::irc::5' in self.inbuffer:
-			ret = ''
-			if 'logs' in core['pickle_ignore'] and 'irc' in core['pickle_ignore']['logs']:
-				print 'The logs are here:',core['pickle_ignore']['logs']['irc']
-				for obj in core['pickle_ignore']['logs']['irc'][-5:]:
-					ret += obj[0] + ':' + obj[1] + ';'
-				self.sender.send(ret[:-1] + '\n')
+		params = self.inbuffer.split('::')
+		if params[0] == 'get':
+			if params[1] == 'queue':
+				self.sender.send(';'.join(core['pickle_ignore']['queue']._get()) + '\n')
 			else:
-				print 'No logs...', core['pickle_ignore']
-				self.sender.send(ret + '\n')
+				ret = ''
+				print 'Building irc logs...'
+				if 'logs' in core['pickle_ignore'] and 'irc' in core['pickle_ignore']['logs']:
+					print 'The logs are here:',core['pickle_ignore']['logs']['irc']
+					for obj in core['pickle_ignore']['logs']['irc'][-5:]:
+						ret += obj[0] + ':' + obj[1] + ';'
+					self.sender.send(ret[:-1] + '\n')
+				else:
+					print 'No logs...', core['pickle_ignore']
+					self.sender.send(ret + '\n')
+		elif params[0] == 'update':
+			if params[1] == 'queue':
+				pass
 		else:
 			print 'Parsed failed: ' + str(self.inbuffer)
 			self.sender.send('')

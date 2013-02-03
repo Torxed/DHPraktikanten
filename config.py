@@ -8,8 +8,8 @@ core = {
 				},
 	'pickle_ignore' : {},
 
-	'email' : {'user' : '',
-				'pass' : '',},
+	'email' : {'user' : '', # ./helpers.py user@email.com
+				'pass' : '',}, #./helpers.py password
 				
 	'cco' : {'consumer_key' : '',
 				'consumer_secret' : '',

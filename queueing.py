@@ -19,7 +19,7 @@ class queue():
 			#	'source' : 'skype',
 			#	'identifier' : 'Torxed',
 			#	'task' : ('software', 'I need to reinstall my pc'),
-			#	'times' : {'reg' : time()-(60*10), 'finished' : time()-(60*5), 'accepted' : time()-(60*10)},
+			#	'times'    : {'reg' : time()-(60*10), 'finished' : time()-(60*5), 'accepted' : time()-(60*10)},
 			#},
 			#1 : {
 			#	'source' : 'skype',
@@ -70,7 +70,8 @@ class queue():
 			return cattimes
 
 	def add(self, source, identifier, task):
-		self.q[len(self.q)+1] = {
+		queuepos = self.get_queuepos()
+		self.q[queuepos] = {
 			'source' : source,
 			'identifier' : identifier,
 			'task' : task,
@@ -80,7 +81,7 @@ class queue():
 		if len(times) == 0:
 			return 1, '2 min'
 		else:
-			return (len(self.q)+1) - self.settings['queuepos'], ''.join(humantime(times[task[0]]))
+			return (queuepos, ''.join(humantime(times[task[0]])))
 
 	def notify(self, workers=2):
 		times = self.queuetime()
@@ -128,10 +129,36 @@ class queue():
 				case = self.q[_id]
 				print strftime('%H:%M:%S') + ' -> Time to notify ' + case['identifier'] + '!'
 
+	def _get(self, back=5):
+		queues = []
+		unaccepted = []
+		accepted = []
+		finished = []
+		for i in range(0, self.settings['queuepos']+1):
+			if self.q[i]['times']['accepted'] and not self.q[i]['times']['finished']:
+				accepted.append('accepted:' + self.q[i]['identifier'] + '@' + self.q[i]['source'])
+			elif self.q[i]['times']['accepted'] and self.q[i]['times']['finished']:
+				finished.append('finished:' + self.q[i]['identifier'] + '@' + self.q[i]['source'])
+			else:
+				unaccepted.append('unaccepted:' + self.q[i]['identifier'] + '@' + self.q[i]['source'])
 
-	def get(self):
+			if len(unaccepted) >= back:
+				break
+
+		for q in unaccepted[:back]:
+			queues.append(q)
+		if len(queues) < back:
+			for q in accepted[0-(back-len(queues)):]:
+				queues.append(q)
+		if len(queues) < back:
+			for q in finished[0-(back-len(queues)):]:
+				queues.append(q)
+
+		return queues
+
+	def get_queuepos(self):
 		self.settings['queuepos'] += 1
-		return self.q[self.settings['queuepos']]
+		return self.settings['queuepos']
 
 	def accept(self, _id):
 		if not self.q[_id]['times']['accepted']:

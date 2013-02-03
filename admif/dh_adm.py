@@ -21,8 +21,30 @@ class network(Thread):
 		self.start()
 
 	def send(self, what):
-		self.sock.send(what+'\n')
+		if self.sock:
+			try:
+				self.sock.send(what+'\n')
+				return True
+			except:
+				return False
+		return False
 
+	def disconnect(self):
+		try:
+			self.sock.close()
+		except:
+			pass
+		del self.sock
+		self.sock = None
+	def connect(self, host='127.0.0.1', port = 6660):
+		self.sock = socket()
+		try:
+			self.sock.connect(('127.0.0.1', 6660))
+			return True
+		except:
+			del self.sock
+			self.sock = None
+			return False
 	def get(self):
 		while self.lockedbuffer:
 			print 'sleeping get'
@@ -44,8 +66,24 @@ class network(Thread):
 		return ret
 
 	def run(self):
+		if not self.sock:
+			while 1:
+				if self.connect():
+					break
+				else:
+					sleep(1)
+				
 		while 1:
-			data = self.sock.recv(8192)
+			try:
+				data = self.sock.recv(8192)
+			except:
+				self.disconnect()
+				while 1:
+					if self.connect():
+						break
+					else:
+						sleep(1)
+
 			while self.lockedbuffer:
 				print 'sleeping recv'
 				sleep(1)
@@ -83,54 +121,74 @@ class clip():
 		return (self.x, self.y, self.width, self.height)
 
 
-class social_window():
-	def __init__(self, network=None):
-		self.background = pyglet.image.load('social_bg.png')
-		self.menu = pyglet.image.load('menu.png')
-
+class window():
+	def __init__(self, network=None, background = None, menu = None, menu_items = [], startpos=(0,0)):
+		self.sprites = {}
 		self.menuitem = {}
-		self.menuitem['menu_facebook'] = pyglet.image.load('facebook.png')
-		self.menuitem['menu_twitter'] = pyglet.image.load('twitter.png')
-		self.menuitem['menu_irc'] = pyglet.image.load('irc.png')
-
+		self.objects = {}
+		self.layers = {}
 		self.textobjects = []
-
 		self.network = network
 
-		self.sprites = {}
-		self.sprites['background'] = {
-						'sprite' : pyglet.sprite.Sprite(self.background.get_region(0, 0, self.background.width, self.background.height)),
-						'click' : None,
-						'clip' : clip(0, 0, self.background.width, self.background.height, self.background.width),
-						'pos' : (0, 0)
-						}
-		self.sprites['menu'] = {
-						'sprite' : pyglet.sprite.Sprite(self.menu.get_region(0, 0, self.menu.width, self.menu.height)),
-						'click' : None,
-						'clip' : clip(0, 0, self.menu.width, self.menu.height, self.menu.width),
-						'pos' : (286-27, 444-228)
-						}
-		self.sprites['menu_facebook'] = {
-						'sprite' : pyglet.sprite.Sprite(self.menuitem['menu_facebook'].get_region(0, 0, 40, 40)),
-						'click' : self.button,
-						'clip' : clip(0, 0, 40, 40, self.menuitem['menu_facebook'].width),
-						'pos' : (self.sprites['menu']['pos'][0]+((54-40)/2)+1, self.sprites['menu']['pos'][1]+self.sprites['menu']['pos'][1]-40)
-						}
-		self.sprites['menu_twitter'] = {
-						'sprite' : pyglet.sprite.Sprite(self.menuitem['menu_twitter'].get_region(0, 0, 40, 40)),
-						'click' : self.button,
-						'clip' : clip(0, 0, 40, 40, self.menuitem['menu_twitter'].width),
-						'pos' : (self.sprites['menu']['pos'][0]+((54-40)/2)+1, self.sprites['menu']['pos'][1]+self.sprites['menu']['pos'][1]-80)
-						}
-		self.sprites['menu_irc'] = {
-						'sprite' : pyglet.sprite.Sprite(self.menuitem['menu_irc'].get_region(0, 0, 40, 40)),
-						'click' : self.button,
-						'clip' : clip(0, 0, 40, 40, self.menuitem['menu_irc'].width),
-						'pos' : (self.sprites['menu']['pos'][0]+((54-40)/2)+1, self.sprites['menu']['pos'][1]+self.sprites['menu']['pos'][1]-120)
-						}
+		## ============ Process:
+		## * Add the desired background-image
+		## * Add the sprite based on that image
+		## * Add the sprite-name as a layer id to layers['name'] = <id>
+		## --- After the layout is done, populate the menu by doing ---
+		## * First, get the layer-id and share it across the items
+		## * Loop through each menu-item-name and store an image of it in self.menuitem
+		## * store the menu-item-name-IMAGE in self.sprites with a clip value of X
+		##   (later, when pressing the image, clip value will have an additional X to
+		##	  swap the image shown to something else, example: 40x40 clip, will be 80x40
+		##    and the image will contain "plain button" at 40x40 and "active" on 80x40)
+		## --- Once the menu is populated, we'll calculate layer ID's for easy access -----
+		## * Loop through layer-names and get their ID
+		## * Store the ID in a new dictionary by   var[ID] = ['name', 'name']
+		## --- Last but not least, update the sprite position with the stored position ---
+		## * Loop through eacy sprite in self.sprite
+		## * Set the position of that sprite.x and sprite.y to sprite.pos.x and sprite.pos.y
 
+		## ===== Build the window-background ===== #
+		if background:
+			self.background = pyglet.image.load(background)
+			# Special step in order to place menu correctly if no background image is given
+			self.backgrounddimensions = self.background.width, self.background.height
+			self.sprites['background'] = {
+							'sprite' : pyglet.sprite.Sprite(self.background.get_region(0, 0, self.background.width, self.background.height)),
+							'click' : None,
+							'clip' : clip(0, 0, self.background.width, self.background.height, self.background.width),
+							'pos' : startpos}
+			self.layers['background'] = len(self.layers)-1
+		else:
+			self.menu = None
+			self.backgrounddimensions = 0, 0
 
-		self.layers = {'background' : 0, 'menu' : 1, 'menu_facebook' : 2, 'menu_twitter' : 2, 'menu_irc' : 2}
+		## ==== Build the menu ==== #
+		if menu:
+			self.menu = pyglet.image.load('menu.png')
+			self.sprites['menu'] = {
+							'sprite' : pyglet.sprite.Sprite(self.menu.get_region(0, 0, self.menu.width, self.menu.height)),
+							'click' : self.menu_click,
+							'clip' : clip(0, 0, self.menu.width, self.menu.height, self.menu.width),
+							'pos' : (startpos[0]+self.backgrounddimensions[0]-(self.menu.width/2), startpos[1]+self.backgrounddimensions[1]-self.menu.height)}
+			self.layers['menu'] = len(self.layers)-1
+		else:
+			self.menu = None
+		
+		itempos = 40
+		layer = len(self.layers)-1
+		for item in menu_items:
+			self.menuitem['menu_' + str(item)] = pyglet.image.load(item + '.png')
+
+			self.sprites['menu_' + str(item)] = {
+						'sprite' : pyglet.sprite.Sprite(self.menuitem['menu_' + str(item)].get_region(0, 0, 40, 40)),
+						'click' : self.button,
+						'clip' : clip(0, 0, 40, 40, self.menuitem['menu_' + str(item)].width),
+						'pos' : (self.sprites['menu']['pos'][0]+((54-40)/2)+1, self.sprites['menu']['pos'][1]+self.sprites['menu']['sprite'].height-10-itempos)
+						}
+			itempos += 40
+			self.layers['menu_' + str(item)] = layer
+
 		self.layerids = {}
 		for layer in self.layers:
 			_id = self.layers[layer]
@@ -144,6 +202,58 @@ class social_window():
 
 		self.timing = time()
 
+	def build(self, name, _type, pos, layerid=None):
+		if not layerid:
+			layerid = len(self.layerids)-1
+
+		action = None
+		if 'list' in _type:
+			action = self.list
+		elif 'button' in _type:
+			action = self.button
+
+		self.objects['obj_' + str(name)] = pyglet.image.load(_type + '.png')
+		self.sprites['obj_' + str(name)] = {
+					'sprite' : pyglet.sprite.Sprite(self.objects['obj_' + str(name)].get_region(0, 0,  self.objects['obj_' + str(name)].width,  self.objects['obj_' + str(name)].height)),
+					'click' : action,
+					'clip' : clip(0, 0, self.objects['obj_' + str(name)].width, self.objects['obj_' + str(name)].height, self.objects['obj_' + str(name)].width),
+					'pos' : pos
+					}
+
+		txtobj = self.text = pyglet.text.Label(text=name, font_name='Verdana', font_size=8, bold=False, italic=False,
+									color=(0, 0, 0, 255), x=pos[0]+10, y=pos[1]+8,
+									width=self.objects['obj_' + str(name)].width, height=None, anchor_x='left', anchor_y='baseline',
+									multiline=False, dpi=None, batch=None, group=None)
+		self.sprites['obj_' + str(name)]['sprite'].x = pos[0]
+		self.sprites['obj_' + str(name)]['sprite'].y = pos[1]
+
+		self.textobjects.append(txtobj)
+
+		self.layers['obj_' + str(name)] = layerid
+		if not layerid in self.layerids:
+			self.layerids[layerid] = []
+		if not 'obj_' + str(name) in self.layerids[layerid]:
+			self.layerids[layerid].append('obj_' + str(name))
+
+	def menu_click(self, item):
+		self.network.send('get::queue::5\n')
+		for i in range(0,5):
+			data = self.network.get()
+			if len(data) > 0:
+				break
+			sleep(0.01)
+
+		starter = 360
+		for queueid in data.replace('\n', '').split(';'):
+			if len(queueid) <= 0: continue
+			self.build(queueid, 'list_new', (self.sprites['background']['sprite'].x,self.sprites['background']['sprite'].y + starter))
+			starter -= 27
+
+	def list(self, item):
+		name = item.split('_')[1]
+		print 'List was clicked:',name
+		self.network.send('update::queue::' + name + '\n')
+
 	def button(self, item):
 		for sprite in self.sprites:
 			if 'menu_' in sprite:
@@ -153,12 +263,14 @@ class social_window():
 					self.sprites[sprite]['clip'].reset()
 				self.sprites[sprite]['sprite'].image = self.menuitem[sprite].get_region(*self.sprites[sprite]['clip'].get())
 
+		print 'Clicked: ' + item
+
+			
 		if 'irc' in item:
 			self.network.send('get::history::irc::5\n')
 			data = ''
 			for i in range(0,5):
 				data = self.network.get()
-				print [data]
 				if len(data) > 0:
 					break
 				sleep(0.01)
@@ -166,6 +278,7 @@ class social_window():
 			starterx = self.sprites['background']['pos'][0] + 10
 			startery = self.sprites['background']['pos'][1]+self.background.height-80
 			data = data.replace('\n','')
+			self.textobjects = []
 			for msg in data.split(';'):
 				if len(msg) <= 0: continue
 
@@ -175,14 +288,20 @@ class social_window():
 											multiline=True, dpi=None, batch=None, group=None)
 				self.textobjects.append(txtobj)
 				startery -= txtobj.content_height+2
-		else:
-			self.textobjects = []
+
+
+#			self.windows['queue'].build('Summalajnen', 'list_accepted', (300,433))
+#			self.windows['queue'].build('Faern', 'list_done', (300,406))
+#			self.windows['queue'].build('Etech', 'list_done', (300,379))
+
+		#else:
+		#	self.textobjects = []
 
 	def dummy(self, sprite):
 		print 'Dummy called'
 
 	def draw(self):
-		for _id in self.layerids:
+		for _id in range(min(self.layerids), max(self.layerids)+1):
 			layers = self.layerids[_id]
 			for layer in layers:
 				self.sprites[layer]['sprite'].draw()
@@ -202,9 +321,11 @@ class social_window():
 			txt.y = txt.y + y
 
 	def inside(self, x,y):
-		if x >= self.sprites['background']['pos'][0] and x <= self.sprites['background']['pos'][0]+self.background.width:
-			if y >= self.sprites['background']['pos'][1] and y <= self.sprites['background']['pos'][1]+self.background.height:
-				return True
+		for sprite in self.sprites:
+			if x >= self.sprites[sprite]['pos'][0] and x <= self.sprites[sprite]['pos'][0]+self.sprites[sprite]['sprite'].width:
+				if y >= self.sprites[sprite]['pos'][1] and y <= self.sprites[sprite]['pos'][1]+self.sprites[sprite]['sprite'].height:
+					return True
+
 		return False
 
 	def click(self, x, y):
@@ -238,22 +359,17 @@ class gui (pyglet.window.Window):
 			'background' : (hextoint(0), hextoint(0), hextoint(0), hextoint(255))
 		}
 		glClearColor(*self.colorscheme['background'])
+		
 		self.alive = 1
+		self.net = network(None)
+
 		self.bg = pyglet.image.load('background.jpg')
-		self.social = social_window()
+
+		self.windows = {'social' : window(self.net, 'social_bg.png', 'menu.png', ['facebook', 'twitter', 'irc']),
+						'queue' : window(self.net, 'queue_bg.png', 'menu.png', startpos = (300,100))}
 
 		self.click = None
 		self.drag = False
-
-		self.socket = socket()
-		self.socket.connect(('127.0.0.1', 6660))
-		#self.socket.bind(('', 6660))
-		#self.socket.listen(4)
-
-		#self.markus, addr = self.socket.accept()
-
-		self.net = network(self.socket)
-		self.social.network = self.net
 
 	def run(self):
 		while self.alive == 1:
@@ -272,12 +388,15 @@ class gui (pyglet.window.Window):
 			self.click.drag(dx, dy)
 
 	def on_mouse_press(self, x, y, button, modifiers):
-		if self.social.inside(x, y):
-			self.click = self.social
+		for win in self.windows:
+			print 'Checking window: ' + win
+			if self.windows[win].inside(x, y):
+				print '	- Inside'
+				self.click = self.windows[win]
 
 	def on_mouse_release(self, x, y, button, modifiers):
-		if not self.drag:
-			self.social.click(x,y)
+		if not self.drag and self.click:
+			self.click.click(x,y)
 		
 		self.click = None
 		self.drag = False
@@ -294,7 +413,10 @@ class gui (pyglet.window.Window):
 		self.clear()
 		self.bg.blit(0,0)
 
-		self.social.draw()
+		for win in self.windows:
+			self.windows[win].draw()
+
+		#self.queue.draw()
 		#self.megared.update()
 		#self.megared.sprite.draw()
 
