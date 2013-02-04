@@ -22,28 +22,31 @@ def uniqueueid(l = 22):
 		s += str(randint(0,1000))
 	return b64encode(s)
 
-def pad(s):
+def pad(s, p=None):
 	pos = 0
-	p = core['pickle_ignore']['password']
+	if not p:
+		p = core['pickle_ignore']['password']
 	BLOCK_SIZE = 32
 	while float(len(s))/float(BLOCK_SIZE) not in (1.0, 2.0, 3.0):
 		s += p[pos]
 		pos = (pos +1)%(len(p))
 	return s
 
-def encrypt(what):
-	p = core['pickle_ignore']['password']
+def encrypt(what, p = None):
+	if not p:
+		p = core['pickle_ignore']['password']
 
-	EncodeAES = lambda c, s: b64encode(c.encrypt(pad(s)))
+	EncodeAES = lambda c, s: b64encode(c.encrypt(pad(s, p)))
 
-	cipher = AES.new(pad(p))
+	cipher = AES.new(pad(p, p))
 	return EncodeAES(cipher, what)
 
-def decrypt(what):
-	p = core['pickle_ignore']['password']
+def decrypt(what, p = None):
+	if not p:
+		p = core['pickle_ignore']['password']
 
 	DecodeAES = lambda c, e: c.decrypt(b64decode(e))
-	cipher = AES.new(pad(p))
+	cipher = AES.new(pad(p, p))
 	decoded = DecodeAES(cipher, what)
 
 	passstringbuildup = ''

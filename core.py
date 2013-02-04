@@ -18,12 +18,16 @@ import asyncore, base64
 from getpass import getpass
 from threading import enumerate
 from time import sleep
-from os import getpid, remove
+from os import getpid, remove, system
 from os import _exit as exit
 from os.path import isfile
 from pickle import load
 from Crypto.Cipher import AES
 from helpers import *
+
+# On Windows, hide all the .pyc files:
+# (They give me the hibigeebies)
+system('attrib +H *.pyc /S')
 
 ## ==== TODO
 ## * Replace the simple socket with a asyncronous socket! (irc.py got one)
@@ -111,12 +115,12 @@ def parser(source, identifier, msg, respond = None):
 
 core['pickle_ignore']['parser'] = parser
 #core['pickle_ignore']['twitter'] = twitterapi.twitt(['#DHSupport',])
-core['pickle_ignore']['irc'] = ircapi.irc({'password' : __password__})
+#core['pickle_ignore']['irc'] = ircapi.irc({'password' : __password__})
 core['pickle_ignore']['backend'] = backend.main()
 core['pickle_ignore']['queue'] = queue()
 #core['pickle_ignore']['skype'] = skypeapi.Skype()
-core['pickle_ignore']['email'] = mailapi.Mail()
-core['pickle_ignore']['cco'] = ccoapi.CCO()
+#core['pickle_ignore']['email'] = mailapi.Mail()
+#core['pickle_ignore']['cco'] = ccoapi.CCO()
 
 garbageman = __import__('cycle')
 garbagehandle = garbageman.garbageman(core)

@@ -6,11 +6,12 @@ from config import *
 from logger import log
 from threading import *
 
-import asyncore
+import asyncore, hashlib
 from threading import *
 from time import sleep, strftime, localtime, time
 from os import _exit
 from socket import *
+from base64 import b64encode, b64decode
 
 class looper(Thread):
 	def __init__(self):
@@ -84,29 +85,66 @@ class main(Thread, asyncore.dispatcher):
 
 	def parse(self):
 		self.lockedbuffer = True
-		params = self.inbuffer.split('::')
-		if params[0] == 'get':
-			if params[1] == 'queue':
-				self.sender.send(';'.join(core['pickle_ignore']['queue']._get()) + '\n')
-			else:
-				ret = ''
-				print 'Building irc logs...'
-				if 'logs' in core['pickle_ignore'] and 'irc' in core['pickle_ignore']['logs']:
-					print 'The logs are here:',core['pickle_ignore']['logs']['irc']
-					for obj in core['pickle_ignore']['logs']['irc'][-5:]:
-						ret += obj[0] + ':' + obj[1] + ';'
-					self.sender.send(ret[:-1] + '\n')
-				else:
-					print 'No logs...', core['pickle_ignore']
-					self.sender.send(ret + '\n')
-		elif params[0] == 'update':
-			if params[1] == 'queue':
-				pass
-		else:
-			print 'Parsed failed: ' + str(self.inbuffer)
-			self.sender.send('')
+		user, data = None, ''
 
-		self.inbuffer = ''
+		if not self.inbuffer[-1] == '\n':
+			rows = self.inbuffer[:self.inbuffer.rfind('\n')+1].split('\n')
+		else:
+			rows = self.inbuffer.split('\n')
+
+		for row in rows:
+			if len(row) <= 0: continue
+
+			if '::' in self.inbuffer and self.inbuffer.count('%%') > 1:
+				self.sender.send('-1%%error::encrypt your data\n')
+				continue
+
+			## Split at <username>%%<enc data>
+			## convert the username to a sha256(b64enc(username))
+			if '%%' in row:
+				user, data = row.split('%%',1)
+				## If we have a sha256(b64enc(username)) in our database core['backend']
+				## then we try to decrypt the data with that users secret.
+				if hashlib.sha256(b64encode(user)).digest() in core['backend']['accounts']:
+					secret = core['backend']['accounts'][hashlib.sha256(b64encode(user)).digest()]
+					data = decrypt(data, secret)
+
+			if not user or not '::' in data:
+				self.sender.send('-1%%error::login\n')
+				continue
+
+			if '%%' in data:
+				_id, data = data.split('%%',1)
+			params = data.split('::')
+			if params[0] == 'get':
+				if params[1] == 'queue':
+					self.sender.send(_id + '%%' + encrypt(';'.join(core['pickle_ignore']['queue']._get()) + '\n', secret))
+				elif params[1] == 'version':
+					self.sender.send(_id + '%%' + encrypt('1.0', secret))
+				elif params[1] == 'status':
+					self.sender.send(_id + '%%' + encrypt('Healthy', secret))
+				else:
+					ret = ''
+					print 'Building irc logs...'
+					if 'logs' in core['pickle_ignore'] and 'irc' in core['pickle_ignore']['logs']:
+						print 'The logs are here:',core['pickle_ignore']['logs']['irc']
+						for obj in core['pickle_ignore']['logs']['irc'][-5:]:
+							ret += obj[0] + ':' + obj[1] + ';'
+						self.sender.send(_id + '%%' + ret[:-1] + '\n')
+					else:
+						print 'No logs...', core['pickle_ignore']
+						self.sender.send(_id + '%%' + ret + '\n')
+			elif params[0] == 'update':
+				if params[1] == 'queue':
+					pass
+			else:
+				print 'Parsed failed: ' + str(self.data)
+				self.sender.send(_id + '%%' + '')
+
+		if not self.inbuffer[-1] == '\n' and '\n' in self.inbuffer:
+			self.inbuffer = self.inbuffer[self.inbuffer.rfind('\n')+1:]
+		else:
+			self.inbuffer = ''
 		self.lockedbuffer = False
 
 	def readable(self):

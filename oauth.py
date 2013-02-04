@@ -85,6 +85,7 @@ class OAuth():
 		try:
 			s.connect((self.host, 80))
 		except:
+			print 'Returning broken data'
 			return {}
 		s.send(requeststring)
 
@@ -92,6 +93,7 @@ class OAuth():
 		loops = 0
 		last = 'X'
 		data = ''
+
 		while loops <= 10 and time() - datahandle.lastupdate:
 			d = datahandle.data
 			if d != last:
@@ -101,6 +103,8 @@ class OAuth():
 			else:
 				loops += 1
 			sleep(0.25)
+
+
 		if data == '':
 			log('Server didn\'t respond in a timefly fashion', 'OAuth')
 			return {}
@@ -125,12 +129,23 @@ class OAuth():
 		return json.loads(d)
 
 if __name__ == '__main__':
+	from os import _exit
+
 	if not 'password' in core['pickle_ignore']:
 		core['pickle_ignore']['password'] = getpass('Enter master password: \n')
 
+	"""
 	x = OAuth('api.crew.dreamhack.se')
 	tokens = x.get()
-	core['cco']['access_key'] = str(tokens['oauth_token'])
-	core['cco']['access_secret'] = str(tokens['oauth_token_secret'])
-	print x.get('/1/event/get/all')
-	print x.get('/1/user/get/635') # <- broke
+	print tokens
+	if tokens:
+		core['cco']['access_key'] = str(tokens['oauth_token'])
+		core['cco']['access_secret'] = str(tokens['oauth_token_secret'])
+		print x.get('/1/event/get/all')
+		print x.get('/1/user/get/635') # <- broke
+
+	sleep(5)
+	_exit(1)
+	"""
+	print decrypt(core['cco']['consumer_key'])
+	print decrypt(core['cco']['consumer_secret'])

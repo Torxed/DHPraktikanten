@@ -4,6 +4,9 @@ from time import sleep, time
 from threading import *
 from socket import *
 from os import _exit
+from Crypto.Cipher import AES
+from base64 import b64encode, b64decode
+from random import randint, random
 
 glEnable(GL_BLEND)
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -12,22 +15,70 @@ glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE)
 
 pyglet.clock.set_fps_limit(30)
 
+#core = {'pickle_ignore' : {'password' : None}}
+
+
+def refstr(s):
+	return s.strip(" \t:,\r\n\"'")
+
+def pad(s, p=None):
+	pos = 0
+	if not p:
+		p = core['pickle_ignore']['password']
+	BLOCK_SIZE = 32
+	while float(len(s))/float(BLOCK_SIZE) not in (1.0, 2.0, 3.0):
+		s += p[pos]
+		pos = (pos +1)%(len(p))
+	return s
+
+def encrypt(what, p = None):
+	if not p:
+		p = core['pickle_ignore']['password']
+
+	EncodeAES = lambda c, s: b64encode(c.encrypt(pad(s, p)))
+
+	cipher = AES.new(pad(p, p))
+	return EncodeAES(cipher, what)
+
+def decrypt(what, p = None):
+	if not p:
+		p = core['pickle_ignore']['password']
+
+	DecodeAES = lambda c, e: c.decrypt(b64decode(e))
+	cipher = AES.new(pad(p, p))
+
+	try:
+		decoded = DecodeAES(cipher, what)
+	except:
+		return what
+
+	passstringbuildup = ''
+	for c in p:
+		passstringbuildup += c
+		while decoded[0-len(passstringbuildup):] == passstringbuildup:
+			decoded = decoded[:0-len(passstringbuildup)]
+	return decoded
+
 class network(Thread):
-	def __init__(self, sock):
+	def __init__(self, sock, user, key):
 		Thread.__init__(self)
 		self.sock = sock
 		self.inbuffer = ''
+		self.data = {}
 		self.lockedbuffer = False
+		self.user = user
+		self.key = key
 		self.start()
 
 	def send(self, what):
 		if self.sock:
+			outid = str(time() + random())
 			try:
-				self.sock.send(what+'\n')
-				return True
+				self.sock.send(self.user + '%%' + encrypt(outid + '%%' + what, self.key) + '\n')
+				return outid
 			except:
-				return False
-		return False
+				return None
+		return None
 
 	def disconnect(self):
 		try:
@@ -45,25 +96,28 @@ class network(Thread):
 			del self.sock
 			self.sock = None
 			return False
-	def get(self):
+
+	def get(self, what=None):
 		while self.lockedbuffer:
-			print 'sleeping get'
 			sleep(1)
-		print 'Get Locking'
 		self.lockedbuffer = True
-		ret = self.inbuffer
+
+		if not what or what not in self.data:
+			ret = self.inbuffer
+		else:
+			ret = self.data[what]
+
 		if len(ret) <= 0:
 			self.lockedbuffer = False
 			return ''
 
-		if not ret[-1] == '\n':
-			ret = ret[ret.rfind('\n')]
-			self.inbuffer = self.inbuffer[len(ret):]
-		else:
+		if not what or what not in self.data:
 			self.inbuffer = ''
-		print 'Get Unlocking'
+		else:
+			del self.data[what]
+
 		self.lockedbuffer = False
-		return ret
+		return decrypt(ret, self.key)
 
 	def run(self):
 		if not self.sock:
@@ -85,12 +139,20 @@ class network(Thread):
 						sleep(1)
 
 			while self.lockedbuffer:
-				print 'sleeping recv'
 				sleep(1)
-			print 'Sleeping Locking'
 			self.lockedbuffer = True
-			self.inbuffer += data
-			print 'Sleeping Unlocking'
+
+			for line in data.split('\n'):
+				if len(line) <= 0: continue
+				print '<<',line
+
+				if '%%' in line:
+					_id, data = line.split('%%',1)
+					self.data[_id] = data
+				else:
+					print 'Network delivered to inbuffer (missing ID)'
+					self.inbuffer += line
+
 			self.lockedbuffer = False
 			sleep(1)
 
@@ -119,7 +181,6 @@ class clip():
 
 	def get(self):
 		return (self.x, self.y, self.width, self.height)
-
 
 class window():
 	def __init__(self, network=None, background = None, menu = None, menu_items = [], startpos=(0,0)):
@@ -236,9 +297,10 @@ class window():
 			self.layerids[layerid].append('obj_' + str(name))
 
 	def menu_click(self, item):
-		self.network.send('get::queue::5\n')
+		_id = self.network.send('get::queue::5')
 		for i in range(0,5):
-			data = self.network.get()
+			print 'get::queue = ' + _id
+			data = self.network.get(_id)
 			if len(data) > 0:
 				break
 			sleep(0.01)
@@ -252,7 +314,7 @@ class window():
 	def list(self, item):
 		name = item.split('_')[1]
 		print 'List was clicked:',name
-		self.network.send('update::queue::' + name + '\n')
+		_id = self.network.send('update::queue::' + name)
 
 	def button(self, item):
 		for sprite in self.sprites:
@@ -267,10 +329,11 @@ class window():
 
 			
 		if 'irc' in item:
-			self.network.send('get::history::irc::5\n')
+			_id = self.network.send('get::history::irc::5')
 			data = ''
 			for i in range(0,5):
-				data = self.network.get()
+				print 'get::history::irc::5 = ' + _id
+				data = self.network.get(_id)
 				if len(data) > 0:
 					break
 				sleep(0.01)
@@ -351,9 +414,35 @@ class window():
 			self.sprites['background']['sprite'].y = self.posy
 			self.timing = time()
 
+
+class window_job_connectionstatus(Thread):
+	def __init__(self, network, sprite, command):
+		Thread.__init__(self)
+
+		if sprite == 'text':
+			self.data = ''
+
+		self.network = network
+		self.command = command
+
+		self.start()
+
+	def run(self):
+		while 1:
+			_id = self.network.send(self.command)
+			data = ''
+			for i in range(0,100):
+				data = self.network.get(_id)
+				if len(data) > 0:
+					break
+				sleep(0.1)
+
+			self.data = data
+
+
 class gui (pyglet.window.Window):
 	def __init__ (self):
-		super(gui, self).__init__(1920, 1080, fullscreen = True)
+		super(gui, self).__init__(1200, 900, fullscreen = False)
 
 		self.colorscheme = {
 			'background' : (hextoint(0), hextoint(0), hextoint(0), hextoint(255))
@@ -361,20 +450,25 @@ class gui (pyglet.window.Window):
 		glClearColor(*self.colorscheme['background'])
 		
 		self.alive = 1
-		self.net = network(None)
+		user = 'DoXiD'
+		key = '\x99\xeaV\xce\xd4|!C\x1d\x0cV\xef\x90O(*\xe4%j\xdba,N\x89\x0bm\xaa\x1ba\xd0\xc3,'
+		self.net = network(None, user, key)
 
 		self.bg = pyglet.image.load('background.jpg')
 
 		self.windows = {'social' : window(self.net, 'social_bg.png', 'menu.png', ['facebook', 'twitter', 'irc']),
 						'queue' : window(self.net, 'queue_bg.png', 'menu.png', startpos = (300,100))}
 
+		self.versiontxt = pyglet.text.Label(text='Unknown', font_name='Verdana', font_size=8, x=10, y=10, multiline=False, width=300)
+
+		self.connectionstatus = pyglet.text.Label(text='Unknown', font_name='Verdana', font_size=8, x=45, y=10, multiline=False, width=300)
+		self.connectionstatus_job = window_job_connectionstatus(self.net, 'text', 'get::status')
+
+#		core['pickle_ignore']['password'] = self.key
+
 		self.click = None
 		self.drag = False
 
-	def run(self):
-		while self.alive == 1:
-			self.render()
-			event = self.dispatch_events()
 
 	def on_draw(self):
 		self.render()
@@ -413,11 +507,21 @@ class gui (pyglet.window.Window):
 		self.clear()
 		self.bg.blit(0,0)
 
+		test = ''
 		for win in self.windows:
 			self.windows[win].draw()
 
+		self.versiontxt.draw()
+
+		self.connectionstatus.text = self.connectionstatus_job.data
+		self.connectionstatus.draw()
+
+		#if self.connectionstatus.text != test:
+		#	self.connectionstatus.draw()
+		#	test = self.connectionstatus.text
+
 		#self.queue.draw()
-		#self.megared.update()
+		#self.mexgared.update()
 		#self.megared.sprite.draw()
 
 		#self.megablue.update()
@@ -425,6 +529,24 @@ class gui (pyglet.window.Window):
 		#self.megablue.sprite.draw()
 
 		self.flip()
+
+	def run(self):
+		_id = self.net.send('get::version')
+		data = ''
+		for i in range(0,5):
+			print 'get::version = ' + _id
+			data = self.net.get(_id)
+			if len(data) > 0:
+				break
+			sleep(0.01)
+
+		if data != '':
+			self.versiontxt.text = data
+
+		while self.alive == 1:
+			self.render()
+			event = self.dispatch_events()
+
 
 
 class backend_for_test(Thread):
@@ -443,7 +565,7 @@ class backend_for_test(Thread):
 		while self.alive:
 			x = ns.recv(8192)
 			#print 'Socket got:',x
-			ns.send('DoXiD:Testing testing! :D;DoXiD:Verkar fungera..;Summalajnen:Tja!\n')
+			ns.send('DoXiD:Testing testing! :D;DoXiD:Verkar fungera..;Summalajnen:Tja!')
 			#print 'Sent!'
 
 #b = backend_for_test()
