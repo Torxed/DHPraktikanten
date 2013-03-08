@@ -54,7 +54,7 @@ if isfile(pidfile):
 		log('Removed the PID file, dead session!', 'Core')
 		remove(pidfile)
 
-__password__ = 'jotkaell'#getpass('Enter the master password: ')
+__password__ = getpass('Enter the master password: ')
 
 log('Initiating')
 
