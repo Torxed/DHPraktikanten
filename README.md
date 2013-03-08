@@ -31,3 +31,11 @@ A user can send in their issue via:
 
 DHPraktikanen will automaticly send the user a notification on the same source (facebook in the example above) when it's time to go to the support booth.
 Once at the support booth, there might be a 0-10 min waiting delay due to technicaleties but it's better then waiting 2hours for support.
+
+
+
+Documentation:
+--------------
+
+This is just partial pieces of the documentation, check the documentation folder for more info!
+![Overview](https://raw.github.com/Torxed/DHPraktikanten/master/documentation/png/dh_praktikanten_-_overview.png)
