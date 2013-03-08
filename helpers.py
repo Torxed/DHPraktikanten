@@ -1,3 +1,4 @@
+import os, errno
 from threading import *
 from Crypto.Cipher import AES
 from urllib import quote_plus
@@ -8,6 +9,17 @@ from config import core
 
 def refstr(s):
 	return s.strip(" \t:,\r\n\"'")
+
+def pid_exists(pid):
+	"""Check whether pid exists in the current process table."""
+	if pid < 0:
+		return False
+	try:
+		os.kill(pid, 0)
+	except OSError, e:
+		return e.errno == errno.EPERM
+	else:
+		return True
 
 def getEvents(data):
 	import unicodedata

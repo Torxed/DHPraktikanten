@@ -17,17 +17,18 @@ import backend
 import asyncore, base64
 from getpass import getpass
 from threading import enumerate
-from time import sleep
-from os import getpid, remove, system
+from shutil import copy2 as copy
+from time import sleep, ctime
+from os import getpid, remove, system, walk
 from os import _exit as exit
-from os.path import isfile
+from os.path import isfile, getmtime, abspath
 from pickle import load
 from Crypto.Cipher import AES
 from helpers import *
 
 # On Windows, hide all the .pyc files:
 # (They give me the hibigeebies)
-system('attrib +H *.pyc /S')
+#system('attrib +H *.pyc /S')
 
 ## ==== TODO
 ## * Replace the simple socket with a asyncronous socket! (irc.py got one)
@@ -38,25 +39,51 @@ system('attrib +H *.pyc /S')
 ## * When accessing a db item, ANYTHING in core, access it through a get/set function
 ##   (the reason for this is to make sure that self.core['flags']['dblock'] is checked!)
 
-#pid = '/var/tmp/praktikanten.pid'
-pidfile = './praktikanten.pid'
+pidfile = '/var/tmp/praktikanten.pid'
+#pidfile = './praktikanten.pid'
 
 if isfile(pidfile):
-	log('Dreamhack Praktikanten is already running!', 'Core')
-	exit(1)
-__password__ = getpass('Enter the master password: ')
+	#log('Dreamhack Praktikanten is already running!', 'Core')
+	fh = open(pidfile)
+	thepid = fh.read()
+	fh.close()
+	thepid = int(thepid)
+	if pid_exists(thepid):
+		exit(1)
+	else:
+		log('Removed the PID file, dead session!', 'Core')
+		remove(pidfile)
+
+__password__ = 'jotkaell'#getpass('Enter the master password: ')
 
 log('Initiating')
 
-if isfile('dh_database.db'):
-	f = open('dh_database.db', 'rb')
-	try:
-		core['pickle'] = load(f)
-		log('Loaded a stored database!')
-	except:
-		log('!!! -> ERROR <- !!\n  can not load db', 'Core')
-		_exit(666)
-	f.close()
+for i in range(0, 2):
+	if isfile('dh_database.db'):
+		f = open('dh_database.db', 'rb')
+		try:
+			core['pickle'] = load(f)
+			log('Loaded a stored database!')
+		except:
+			if i == 0:
+				newest = None
+				for root, dirs, files in walk('./db_backups/'):
+					for f in files:
+						absfpath = abspath(root + '/' + f)
+						if not newest:
+							newest = (absfpath, getmtime(absfpath))
+						else:
+							curftime = getmtime(absfpath)
+							if curftime >= newest[1]:
+								newest = (absfpath, curftime)
+				if newest:
+					copy(newest[0], './dh_database.db')
+					log ('Loaded a backup database (' + newest[0][newest[0].rfind('/'):] + '), last modified: ' + ctime(newest[1]), 'Core')
+			else:
+				log('Can not load dh_database.db, backup and main is broken!', 'Core')
+			exit(666)
+		f.close()
+		break
 
 core['pickle_ignore']['password'] = __password__
 
@@ -119,8 +146,8 @@ core['pickle_ignore']['parser'] = parser
 core['pickle_ignore']['backend'] = backend.main()
 core['pickle_ignore']['queue'] = queue()
 #core['pickle_ignore']['skype'] = skypeapi.Skype()
-#core['pickle_ignore']['email'] = mailapi.Mail()
-#core['pickle_ignore']['cco'] = ccoapi.CCO()
+core['pickle_ignore']['email'] = mailapi.Mail()
+core['pickle_ignore']['cco'] = ccoapi.CCO()
 
 garbageman = __import__('cycle')
 garbagehandle = garbageman.garbageman(core)
@@ -132,6 +159,9 @@ f.write(str(pid))
 f.close()
 
 log('All instances started!')
+core['pickle_ignore']['queue'].add('irc', 'DoXiD', ('hardware', 'DoXiD just has issues..'))
+core['pickle_ignore']['queue'].add('irc', 'Yamakazi', ('software', 'Yamakazi can not play Dota2'))
+core['pickle_ignore']['queue'].add('irc', 'Summalajnen', ('software', 'Summalajnen has some issues with CS'))
 
 try:
 	while 1:

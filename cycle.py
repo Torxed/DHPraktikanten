@@ -1,3 +1,4 @@
+import sys
 from time import time, sleep
 from threading import *
 from pickle import dump
@@ -28,5 +29,6 @@ class garbageman(Thread):
 			f = open('./dh_database.db', 'wb')
 			dump(self.core['pickle'], f)
 			f.close()
+			sys.stdout.flush()
 			self.core['pickle']['flags']['dblock'] = False
 			sleep(5)

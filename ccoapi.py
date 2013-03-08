@@ -37,6 +37,7 @@ class CCO(Thread):
 		tokens = self.OAuth.get() # Defaults to requesting the tokens
 		if len(tokens) <= 0:
 			return None
+		print tokens
 		core['cco']['access_key'] = tokens['oauth_token']
 		core['cco']['access_secret'] = tokens['oauth_token_secret']
 		return True
@@ -52,7 +53,7 @@ class CCO(Thread):
 
 		while 1:
 			new = []
-			log('Getting eventlist','CCO')
+			#log('Getting eventlist','CCO')
 			for e in getEvents(self.OAuth.get('/1/event/get/all')):
 				if not e in core['pickle']['CCO_events']:
 					new.append(e)
@@ -60,7 +61,6 @@ class CCO(Thread):
 					log('New event: ' + str(e),'CCO')
 
 			if 'email' in core['pickle_ignore']:
-				
 				if not 'mailinglist' in core['pickle']:
 					core['pickle']['mailinglist'] = {}
 				if not 'cco' in core['pickle']['mailinglist']:
@@ -95,7 +95,7 @@ class CCO(Thread):
 						body += '\n\n\n\nTo unsubscribe, send a e-mail (containing what ever) to: anton.doxid+unwatch@gmail.com!'
 
 					if len(body) > 0:
-						print 'Mailing',person#core['pickle_ignore']['email'].send(person, t, body)
+						pass #core['pickle_ignore']['email'].send(person, t, body)
 
 			sleep(60)
 
