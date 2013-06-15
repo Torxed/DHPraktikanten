@@ -12,6 +12,12 @@ from time import sleep, strftime, localtime, time
 from os import _exit
 from socket import *
 from base64 import b64encode, b64decode
+from hashlib import sha1
+
+def hash(what):
+	m = sha1()
+	m.update(what)
+	return m.hexdigest()
 
 class looper(Thread):
 	def __init__(self):
@@ -48,9 +54,10 @@ class sender(Thread):
 				log('{OUT} ' + logout, self.source)
 				self.s(self.buffer[self.bufferpos])
 				self.bufferpos += 1
+			sleep(0.1)
 
 class main(Thread, asyncore.dispatcher):
-	def __init__(self, _s = None):
+	def __init__(self, _s = None, push_notifications={}, addr=None):
 		Thread.__init__(self)
 
 		self._s = _s
@@ -62,13 +69,20 @@ class main(Thread, asyncore.dispatcher):
 		self.is_writable = False
 
 		self.exit = False
+		self.push_notifications = push_notifications
+		#self.addr = addr
+		#print self.addr
+
+		# self.push_notifications = {'sock' : None|'Nick'}
 
 		if _s:
 			## If we got a socket, it means this is not the main socket
 			asyncore.dispatcher.__init__(self, _s)
 			self.sender = sender(self.send)
+			self.client = True
 		else:
 			## If main socket, a sender will not be possible
+			self.client = False
 			asyncore.dispatcher.__init__(self)
 			self.create_socket(AF_INET, SOCK_STREAM)
 			#if self.allow_reuse_address:
@@ -103,18 +117,30 @@ class main(Thread, asyncore.dispatcher):
 			## convert the username to a sha256(b64enc(username))
 			if '%%' in row:
 				user, data = row.split('%%',1)
+				if self.push_notifications[self.addr[0]]['nick'] == None:
+					self.push_notifications[self.addr[0]]['nick'] = user
 				## If we have a sha256(b64enc(username)) in our database core['backend']
 				## then we try to decrypt the data with that users secret.
 				if hashlib.sha256(b64encode(user)).digest() in core['backend']['accounts']:
 					secret = core['backend']['accounts'][hashlib.sha256(b64encode(user)).digest()]
 					data = decrypt(data, secret)
+					log('{IN:DEC} "' + user + '" - ' + str(data), 'Backend:Parse')
 
 			if not user or not '::' in data:
 				self.sender.send('-1%%error::login\n')
 				continue
 
 			if '%%' in data:
+				## All messages containing %% is a specific request for a specific task
 				_id, data = data.split('%%',1)
+				self.sender.send(_id + '%%' + '')
+			else:
+				_id = '3'
+
+			params = data.split('::')
+			if params[0] == 'register':
+				self.sender.send(_id + '%%' + encrypt('queue::' + ';'.join(core['pickle_ignore']['queue']._get()) + '\n', secret))
+			"""
 			params = data.split('::')
 			if params[0] == 'get':
 				if params[1] == 'queue':
@@ -140,6 +166,7 @@ class main(Thread, asyncore.dispatcher):
 			else:
 				print 'Parsed failed: ' + str(self.data)
 				self.sender.send(_id + '%%' + '')
+			"""
 
 		if not self.inbuffer[-1] == '\n' and '\n' in self.inbuffer:
 			self.inbuffer = self.inbuffer[self.inbuffer.rfind('\n')+1:]
@@ -162,7 +189,8 @@ class main(Thread, asyncore.dispatcher):
 			log('Error accepting: ' + str(obj))
 	def process_request(self, sock, addr):
 		log('	Accepted: ' + str(addr), 'Backend')
-		x = main(sock)
+		x = main(sock, self.push_notifications, addr[0])
+		self.push_notifications[addr[0]] = {'sock' : x, 'nick' : None, 'sent' : {}}
 	def verify_request(self, conn_sock, client_address):
 		return True
 	def handle_close(self):
@@ -177,8 +205,43 @@ class main(Thread, asyncore.dispatcher):
 	def handle_write(self):
 		pass
 
+	def push(self, ip):
+		pass
+
 	def run(self):
+		static_messages = {'version' : (0, '1.0'),
+							'status' : (1, 'Healthy')}
+
+		#if params[1] == 'queue':
+		#	self.sender.send(_id + '%%' + encrypt(';'.join(core['pickle_ignore']['queue']._get()) + '\n', secret))
+
 		while not self.exit:
 			if len(self.inbuffer) > 0:
 				self.parse()
-			sleep(0.01)
+			if not self.client:
+				for ip, vals in self.push_notifications.items():
+					if vals['nick']:
+						user = vals['nick']
+						secret = core['backend']['accounts'][hashlib.sha256(b64encode(user)).digest()]
+
+						for k,v in static_messages.items():
+							if not k in vals['sent'] or hash(str(v)) != vals['sent'][k]:
+								try:
+									vals['sock'].sender.send(str(v[0]) + '%%' + encrypt(k + ':' + v[1], secret) + '\n')
+									log(k + ':'+v[1], 'PUSH::'+user)
+									self.push_notifications[ip]['sent'][k] = hash(str(v))
+								except Exception, e:
+									del self.push_notifications[ip]
+
+						if 'global_push' in core['pickle_ignore']:
+							for k,v in core['pickle_ignore']['global_push'].items():
+								if not k in vals['sent'] or hash(str(v)) != vals['sent'][k]:
+									try:
+										self.push_notifications[ip]['sock'].sender.send(str(v[0]) + '%%' + encrypt(k + '::' + v[1], secret) + '\n')
+										log(k + ':'+v[1], 'PUSH::'+user)
+										self.push_notifications[ip]['sent'][k] = hash(str(v))
+									except Exception, e:
+										del self.push_notifications[ip]
+				sleep(5)
+			else:
+				sleep(0.01)

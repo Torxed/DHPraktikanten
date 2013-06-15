@@ -28,7 +28,7 @@ class irc(Thread, asyncore.dispatcher):
 		if not 'fullname' in self.conf:
 			self.conf['fullname'] = 'Kaylee Frye'
 		if not 'channels' in self.conf:
-			self.conf['channels'] = ['#dhsupport', '#dreamhack']
+			self.conf['channels'] = ['#dhpraktikanten',]
 		if not 'password' in self.conf:
 			try:
 				self.conf['password'] = __password__

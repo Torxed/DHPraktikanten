@@ -64,7 +64,9 @@ for i in range(0, 2):
 		try:
 			core['pickle'] = load(f)
 			log('Loaded a stored database!')
+			f.close()
 		except:
+			f.close()
 			if i == 0:
 				newest = None
 				for root, dirs, files in walk('./db_backups/'):
@@ -82,7 +84,6 @@ for i in range(0, 2):
 			else:
 				log('Can not load dh_database.db, backup and main is broken!', 'Core')
 			exit(666)
-		f.close()
 		break
 
 core['pickle_ignore']['password'] = __password__
@@ -103,7 +104,7 @@ def parser(source, identifier, msg, respond = None):
 	
 	ret = msg
 
-	for item in ('problem with', 'problem med', 'min dator startar inte'):
+	for item in ('problem with', 'problem med', 'min dator startar inte', 'kuk i floppyn', 'internet är slut'):
 		if item in core['pickle']['conversation'][identifier].lower():
 
 			if not identifier in core['pickle']['conversation']:
@@ -135,19 +136,39 @@ def parser(source, identifier, msg, respond = None):
 		if not identifier in core['pickle']['conversation']:
 			break
 
+
 	if respond and ret != msg:
 		respond.send(ret)
+		if 'your place in the queue is' in ret:
+			if not 'global_push' in core['pickle_ignore']:
+				core['pickle_ignore']['global_push'] = {}
+			if not 'queue' in core['pickle_ignore']['global_push']:
+				core['pickle_ignore']['global_push']['queue'] = [3, '']
+			
+			core['pickle_ignore']['global_push']['queue'][1] = core['pickle_ignore']['global_push']['queue'][1] + ';' + str(core['pickle_ignore']['queue'].settings['queuepos']) + ':unaccepted:'+identifier
+			if core['pickle_ignore']['global_push']['queue'][1][0] == ';':
+				core['pickle_ignore']['global_push']['queue'][1] = core['pickle_ignore']['global_push']['queue'][1][1:]
 	else:
+		if ret != msg and 'your place in the queue is' in ret:
+			if not 'global_push' in core['pickle_ignore']:
+				core['pickle_ignore']['global_push'] = {}
+			if not 'queue' in core['pickle_ignore']['global_push']:
+				core['pickle_ignore']['global_push']['queue'] = [3, '']
+			
+			core['pickle_ignore']['global_push']['queue'][1] = core['pickle_ignore']['global_push']['queue'][1] + ';' + str(core['pickle_ignore']['queue'].settings['queuepos']) + ':unaccepted:'+identifier
+			if core['pickle_ignore']['global_push']['queue'][1][0] == ';':
+				core['pickle_ignore']['global_push']['queue'][1] = core['pickle_ignore']['global_push']['queue'][1][1:]
+
 		return True
 
 core['pickle_ignore']['parser'] = parser
 #core['pickle_ignore']['twitter'] = twitterapi.twitt(['#DHSupport',])
-#core['pickle_ignore']['irc'] = ircapi.irc({'password' : __password__})
+core['pickle_ignore']['irc'] = ircapi.irc({'password' : __password__})
 core['pickle_ignore']['backend'] = backend.main()
 core['pickle_ignore']['queue'] = queue()
 #core['pickle_ignore']['skype'] = skypeapi.Skype()
-core['pickle_ignore']['email'] = mailapi.Mail()
-core['pickle_ignore']['cco'] = ccoapi.CCO()
+#core['pickle_ignore']['email'] = mailapi.Mail()
+#core['pickle_ignore']['cco'] = ccoapi.CCO()
 
 garbageman = __import__('cycle')
 garbagehandle = garbageman.garbageman(core)
@@ -159,9 +180,9 @@ f.write(str(pid))
 f.close()
 
 log('All instances started!')
-core['pickle_ignore']['queue'].add('irc', 'DoXiD', ('hardware', 'DoXiD just has issues..'))
-core['pickle_ignore']['queue'].add('irc', 'Yamakazi', ('software', 'Yamakazi can not play Dota2'))
-core['pickle_ignore']['queue'].add('irc', 'Summalajnen', ('software', 'Summalajnen has some issues with CS'))
+#core['pickle_ignore']['queue'].add('irc', 'DoXiD', ('hardware', 'DoXiD just has issues..'))
+#core['pickle_ignore']['queue'].add('irc', 'Yamakazi', ('software', 'Yamakazi can not play Dota2'))
+#core['pickle_ignore']['queue'].add('irc', 'Summalajnen', ('software', 'Summalajnen has some issues with CS'))
 
 try:
 	while 1:

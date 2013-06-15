@@ -34,12 +34,32 @@ def uniqueueid(l = 22):
 		s += str(randint(0,1000))
 	return b64encode(s)
 
+def frange3(start, end=None, inc=None):
+	"""A range function, that does accept float increments..."""
+	import math
+
+	if end == None:
+		end = start + 0.0
+		start = 0.0
+	else: start += 0.0 # force it to be a float
+
+	if inc == None:
+		inc = 1.0
+	count = int(math.ceil((end - start) / inc))
+
+	L = [None,] * count
+
+	L[0] = start
+	for i in xrange(1,count):
+		L[i] = L[i-1] + inc
+	return L
+
 def pad(s, p=None):
 	pos = 0
 	if not p:
 		p = core['pickle_ignore']['password']
 	BLOCK_SIZE = 32
-	while float(len(s))/float(BLOCK_SIZE) not in (1.0, 2.0, 3.0):
+	while float(len(s))/float(BLOCK_SIZE) not in frange3(1.0, 800.0):
 		s += p[pos]
 		pos = (pos +1)%(len(p))
 	return s
@@ -47,9 +67,7 @@ def pad(s, p=None):
 def encrypt(what, p = None):
 	if not p:
 		p = core['pickle_ignore']['password']
-
 	EncodeAES = lambda c, s: b64encode(c.encrypt(pad(s, p)))
-
 	cipher = AES.new(pad(p, p))
 	return EncodeAES(cipher, what)
 

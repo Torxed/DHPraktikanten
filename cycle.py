@@ -16,19 +16,27 @@ class garbageman(Thread):
 	def run(self):
 		if not 'backupcounter' in self.core['pickle']:
 			self.core['pickle']['backupcounter'] = 0
+		successful_backup = False
 		while 1:
 			#core['pickle_ignore']['queue'].notify()
 
-			if isfile('./dh_database.db'):
-				self.core['pickle']['backupcounter'] = (self.core['pickle']['backupcounter'] + 1)%10
-				if isfile('dh_database.'+str(self.core['pickle']['backupcounter'])):
-					remove('dh_database.'+str(self.core['pickle']['backupcounter']))
-				copy('dh_database.db', './db_backups/dh_database.'+str(self.core['pickle']['backupcounter']))
+			if successful_backup:
+				if isfile('./dh_database.db'):
+					self.core['pickle']['backupcounter'] = (self.core['pickle']['backupcounter'] + 1)%10
+					if isfile('dh_database.'+str(self.core['pickle']['backupcounter'])):
+						remove('dh_database.'+str(self.core['pickle']['backupcounter']))
+					copy('dh_database.db', './db_backups/dh_database.'+str(self.core['pickle']['backupcounter']))
 
 			self.core['pickle']['flags']['dblock'] = True
 			f = open('./dh_database.db', 'wb')
-			dump(self.core['pickle'], f)
+			try:
+				dump(self.core['pickle'], f)
+			except:
+				sleep(0.1)
+				continue
+
 			f.close()
 			sys.stdout.flush()
 			self.core['pickle']['flags']['dblock'] = False
+			successful_backup = True
 			sleep(5)

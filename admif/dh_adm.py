@@ -15,6 +15,8 @@ glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE)
 
 pyglet.clock.set_fps_limit(30)
 
+DEBUG = 1
+
 #core = {'pickle_ignore' : {'password' : None}}
 
 
@@ -69,6 +71,8 @@ class network(Thread):
 		self.user = user
 		self.key = key
 		self.start()
+		#self.text_sprites = {'name' : {'sprite' : <handle>, 'text' : '...'}}
+		self.text_sprites = {}
 
 	def send(self, what):
 		if self.sock:
@@ -91,33 +95,45 @@ class network(Thread):
 		self.sock = socket()
 		try:
 			self.sock.connect(('127.0.0.1', 6660))
+			self.sock.send(self.user + '%%' + encrypt('register::push', self.key) + '\n')
 			return True
-		except:
+		except Exception, e:
+			print Exception, e
 			del self.sock
 			self.sock = None
 			return False
 
-	def get(self, what=None):
-		while self.lockedbuffer:
-			sleep(1)
-		self.lockedbuffer = True
-
-		if not what or what not in self.data:
-			ret = self.inbuffer
-		else:
-			ret = self.data[what]
-
-		if len(ret) <= 0:
-			self.lockedbuffer = False
-			return ''
-
-		if not what or what not in self.data:
-			self.inbuffer = ''
-		else:
-			del self.data[what]
-
-		self.lockedbuffer = False
-		return decrypt(ret, self.key)
+#	def get(self, what=None):
+#		print 'Fetching',what
+#		print ' Locked buffer'
+#		while self.lockedbuffer:
+#			sleep(1)
+#		self.lockedbuffer = True
+#		print ' - Passed'
+#
+#
+#		if not what or what not in self.data:
+#			ret = self.inbuffer
+#			print ' Missing ID:',ret
+#		else:
+#			ret = self.data[what]
+#			print ' Found ID:',ret
+#
+#		if len(ret) <= 0:
+#			self.lockedbuffer = False
+#			print ' Empty buffer, returning'
+#			print 'DEBUG:',str(self.data)
+#			return ''
+#
+#		if not what or what not in self.data:
+#			self.inbuffer = ''
+#		else:
+#			print ' Deleting what'
+#			del self.data[what]
+#
+#		self.lockedbuffer = False
+#		print ' Returning dec:',ret,decrypt(ret, self.key)
+#		return decrypt(ret, self.key)
 
 	def run(self):
 		if not self.sock:
@@ -137,6 +153,7 @@ class network(Thread):
 						break
 					else:
 						sleep(1)
+				continue
 
 			while self.lockedbuffer:
 				sleep(1)
@@ -148,7 +165,13 @@ class network(Thread):
 
 				if '%%' in line:
 					_id, data = line.split('%%',1)
-					self.data[_id] = data
+					data = decrypt(data, self.key)
+					print '\t<[',data
+					if ':' in data:
+						cmd, data = data.split(':',1)
+						self.text_sprites[cmd] = data
+					else:
+						print 'Unknown data'
 				else:
 					print 'Network delivered to inbuffer (missing ID)'
 					self.inbuffer += line
@@ -232,12 +255,12 @@ class window():
 							'click' : self.menu_click,
 							'clip' : clip(0, 0, self.menu.width, self.menu.height, self.menu.width),
 							'pos' : (startpos[0]+self.backgrounddimensions[0]-(self.menu.width/2), startpos[1]+self.backgrounddimensions[1]-self.menu.height)}
-			self.layers['menu'] = len(self.layers)-1
+			self.layers['menu'] = 1000
 		else:
 			self.menu = None
 		
 		itempos = 40
-		layer = len(self.layers)-1
+		layer = 1001
 		for item in menu_items:
 			self.menuitem['menu_' + str(item)] = pyglet.image.load(item + '.png')
 
@@ -266,6 +289,7 @@ class window():
 	def build(self, name, _type, pos, layerid=None):
 		if not layerid:
 			layerid = len(self.layerids)-1
+		pos = pos[0] + self.sprites['background']['pos'][0], pos[1] + self.sprites['background']['pos'][1]
 
 		action = None
 		if 'list' in _type:
@@ -273,28 +297,29 @@ class window():
 		elif 'button' in _type:
 			action = self.button
 
-		self.objects['obj_' + str(name)] = pyglet.image.load(_type + '.png')
-		self.sprites['obj_' + str(name)] = {
-					'sprite' : pyglet.sprite.Sprite(self.objects['obj_' + str(name)].get_region(0, 0,  self.objects['obj_' + str(name)].width,  self.objects['obj_' + str(name)].height)),
-					'click' : action,
-					'clip' : clip(0, 0, self.objects['obj_' + str(name)].width, self.objects['obj_' + str(name)].height, self.objects['obj_' + str(name)].width),
-					'pos' : pos
-					}
+		if not 'obj_' + str(name) in self.objects:
+			self.objects['obj_' + str(name)] = pyglet.image.load(_type + '.png')
+			self.sprites['obj_' + str(name)] = {
+						'sprite' : pyglet.sprite.Sprite(self.objects['obj_' + str(name)].get_region(0, 0,  self.objects['obj_' + str(name)].width,  self.objects['obj_' + str(name)].height)),
+						'click' : action,
+						'clip' : clip(0, 0, self.objects['obj_' + str(name)].width, self.objects['obj_' + str(name)].height, self.objects['obj_' + str(name)].width),
+						'pos' : pos
+						}
 
-		txtobj = self.text = pyglet.text.Label(text=name, font_name='Verdana', font_size=8, bold=False, italic=False,
-									color=(0, 0, 0, 255), x=pos[0]+10, y=pos[1]+8,
-									width=self.objects['obj_' + str(name)].width, height=None, anchor_x='left', anchor_y='baseline',
-									multiline=False, dpi=None, batch=None, group=None)
-		self.sprites['obj_' + str(name)]['sprite'].x = pos[0]
-		self.sprites['obj_' + str(name)]['sprite'].y = pos[1]
+			txtobj = self.text = pyglet.text.Label(text=name, font_name='Verdana', font_size=8, bold=False, italic=False,
+										color=(0, 0, 0, 255), x=pos[0]+10, y=pos[1]+8,
+										width=self.objects['obj_' + str(name)].width, height=None, anchor_x='left', anchor_y='baseline',
+										multiline=False, dpi=None, batch=None, group=None)
+			self.sprites['obj_' + str(name)]['sprite'].x = pos[0]
+			self.sprites['obj_' + str(name)]['sprite'].y = pos[1]
 
-		self.textobjects.append(txtobj)
+			self.textobjects.append(txtobj)
 
-		self.layers['obj_' + str(name)] = layerid
-		if not layerid in self.layerids:
-			self.layerids[layerid] = []
-		if not 'obj_' + str(name) in self.layerids[layerid]:
-			self.layerids[layerid].append('obj_' + str(name))
+			self.layers['obj_' + str(name)] = layerid
+			if not layerid in self.layerids:
+				self.layerids[layerid] = []
+			if not 'obj_' + str(name) in self.layerids[layerid]:
+				self.layerids[layerid].append('obj_' + str(name))
 
 	def menu_click(self, item):
 		_id = self.network.send('get::queue::5')
@@ -365,6 +390,7 @@ class window():
 
 	def draw(self):
 		for _id in range(min(self.layerids), max(self.layerids)+1):
+			if not _id in self.layerids: continue
 			layers = self.layerids[_id]
 			for layer in layers:
 				self.sprites[layer]['sprite'].draw()
@@ -439,6 +465,9 @@ class window_job_connectionstatus(Thread):
 
 			self.data = data
 
+def label(text='Unknown'):
+	return pyglet.text.Label(text=text, font_name='Verdana', font_size=8, x=10, y=10, multiline=False, width=300)
+
 
 class gui (pyglet.window.Window):
 	def __init__ (self):
@@ -459,10 +488,7 @@ class gui (pyglet.window.Window):
 		self.windows = {'social' : window(self.net, 'social_bg.png', 'menu.png', ['facebook', 'twitter', 'irc']),
 						'queue' : window(self.net, 'queue_bg.png', 'menu.png', startpos = (300,100))}
 
-		self.versiontxt = pyglet.text.Label(text='Unknown', font_name='Verdana', font_size=8, x=10, y=10, multiline=False, width=300)
-
-		self.connectionstatus = pyglet.text.Label(text='Unknown', font_name='Verdana', font_size=8, x=45, y=10, multiline=False, width=300)
-		self.connectionstatus_job = window_job_connectionstatus(self.net, 'text', 'get::status')
+		self.console = {'version' : {'text' : label(), 'time' : time()}, 'status' : {'text' : label(), 'time' : time()}}
 
 #		core['pickle_ignore']['password'] = self.key
 
@@ -472,6 +498,7 @@ class gui (pyglet.window.Window):
 
 	def on_draw(self):
 		self.render()
+		self.flip()
 
 	def on_close(self):
 		self.alive = 0
@@ -511,10 +538,28 @@ class gui (pyglet.window.Window):
 		for win in self.windows:
 			self.windows[win].draw()
 
-		self.versiontxt.draw()
+		y = 10
+		for key in sorted(self.net.text_sprites):
+			val = self.net.text_sprites[key].strip()
+			if key == 'queue':
+				if len(val) > 1:
+					if val[0] == ':':
+						val = val[1:]
+					qy = 360
+					for queueitem in val.split(';'):
+						_id, status, user = queueitem.split(':',2)
+						self.windows['queue'].build(user.split('@',1)[0], 'list_' + status, (2,qy))
+						qy -= 25
+			else:
+				if not key in self.console:
+					self.console[key] = {'text' : label(), 'time' : time()}
+				self.console[key]['text'].text = key + ': ' + val
+				self.console[key]['time'] = time()
+				self.console[key]['text'].y = y
+				self.console[key]['text'].draw()
+				y += 12
 
-		self.connectionstatus.text = self.connectionstatus_job.data
-		self.connectionstatus.draw()
+		#self.connectionstatus.text = self.connectionstatus_job.data
 
 		#if self.connectionstatus.text != test:
 		#	self.connectionstatus.draw()
@@ -523,52 +568,30 @@ class gui (pyglet.window.Window):
 		#self.queue.draw()
 		#self.mexgared.update()
 		#self.megared.sprite.draw()
-
+		
 		#self.megablue.update()
 		#self.megablue.posx = 50
 		#self.megablue.sprite.draw()
 
-		self.flip()
-
 	def run(self):
-		_id = self.net.send('get::version')
-		data = ''
-		for i in range(0,5):
-			print 'get::version = ' + _id
-			data = self.net.get(_id)
-			if len(data) > 0:
-				break
-			sleep(0.01)
+		#_id = self.net.send('get::version')
+		#data = ''
+		#for i in range(0,5):
+		#	print 'get::version = 0'
+		#	data = self.net.get('0')
+		#	if len(data) > 0:
+		#		break
+		#	sleep(0.01)
 
-		if data != '':
-			self.versiontxt.text = data
+		#if data != '':
+		#	self.versiontxt.text = data
 
 		while self.alive == 1:
-			self.render()
 			event = self.dispatch_events()
+			self.render()
+			self.flip()
 
-
-
-class backend_for_test(Thread):
-	def __init__(self):
-		Thread.__init__(self)
-		self.alive = 1
-		self.start()
-
-	def run(self):
-		s = socket()
-		s.bind(('127.0.0.1', 6660))
-		s.listen(4)
-
-		ns, na = s.accept()
-
-		while self.alive:
-			x = ns.recv(8192)
-			#print 'Socket got:',x
-			ns.send('DoXiD:Testing testing! :D;DoXiD:Verkar fungera..;Summalajnen:Tja!')
-			#print 'Sent!'
-
-#b = backend_for_test()
+			sleep(0.01)
 
 x = gui()
 x.run()

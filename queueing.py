@@ -140,7 +140,7 @@ class queue():
 			elif self.q[i]['times']['accepted'] and self.q[i]['times']['finished']:
 				finished.append('finished:' + self.q[i]['identifier'] + '@' + self.q[i]['source'])
 			else:
-				unaccepted.append('unaccepted:' + self.q[i]['identifier'] + '@' + self.q[i]['source'])
+				unaccepted.append(str(i) + ':unaccepted:' + self.q[i]['identifier'] + '@' + self.q[i]['source'])
 
 			if len(unaccepted) >= back:
 				break
