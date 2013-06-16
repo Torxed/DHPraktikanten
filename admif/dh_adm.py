@@ -297,7 +297,13 @@ class window():
 		elif 'button' in _type:
 			action = self.button
 
-		if not 'obj_' + str(name) in self.objects:
+		if 'obj_' + str(name) in self.objects:
+			## TODO: Don't call build unless a change is made!
+			self.objects['obj_' + str(name)] = pyglet.image.load(_type + '.png')
+			self.sprites['obj_' + str(name)]['sprite'] = pyglet.sprite.Sprite(self.objects['obj_' + str(name)].get_region(0, 0,  self.objects['obj_' + str(name)].width,  self.objects['obj_' + str(name)].height))
+			self.sprites['obj_' + str(name)]['sprite'].x = pos[0]
+			self.sprites['obj_' + str(name)]['sprite'].y = pos[1]
+		else:
 			self.objects['obj_' + str(name)] = pyglet.image.load(_type + '.png')
 			self.sprites['obj_' + str(name)] = {
 						'sprite' : pyglet.sprite.Sprite(self.objects['obj_' + str(name)].get_region(0, 0,  self.objects['obj_' + str(name)].width,  self.objects['obj_' + str(name)].height)),
@@ -355,7 +361,8 @@ class window():
 			
 		if 'irc' in item:
 			_id = self.network.send('get::history::irc::5')
-			data = ''
+			print str(self.network.text_sprites)
+			"""			data = ''
 			for i in range(0,5):
 				print 'get::history::irc::5 = ' + _id
 				data = self.network.get(_id)
@@ -376,7 +383,7 @@ class window():
 											multiline=True, dpi=None, batch=None, group=None)
 				self.textobjects.append(txtobj)
 				startery -= txtobj.content_height+2
-
+			"""
 
 #			self.windows['queue'].build('Summalajnen', 'list_accepted', (300,433))
 #			self.windows['queue'].build('Faern', 'list_done', (300,406))

@@ -45,6 +45,21 @@ class queue():
 		self.settings = {'queuepos' : -1, 'notifypercentage' : 80} # -1 = first run and queue item #0 will be returned
 		log('Engine started','Queue')
 
+	def accept_name(self, name):
+		print 'Trying to accept',name
+		print self.q
+		for _id in self.q:
+			if ((name == self.q[_id]['identifier'] or ('@' in self.q[_id]['identifier'] and name == self.q[_id]['identifier'].split('@',1)[0]))) and not self.q[_id]['times']['accepted']:
+				self.q[_id]['times']['accepted'] = time()
+				return _id, self.q[_id]['identifier']
+		return None, None
+	def complete_name(self, name):
+		for _id in self.q:
+			if ((name == self.q[_id]['identifier'] or ('@' in self.q[_id]['identifier'] and name == self.q[_id]['identifier'].split('@',1)[0]))) and not self.q[_id]['times']['finished']:
+				self.q[_id]['times']['finished'] = time()
+				return _id, self.q[_id]['identifier']
+		return None, None
+
 	def queuetime(self, which=None):
 		cats = {}
 		cattimes = {}
@@ -69,7 +84,7 @@ class queue():
 		else:
 			return cattimes
 
-	def add(self, source, identifier, task):
+	def add(self, source, identifier, task, working=5):
 		queuepos = self.get_queuepos()
 		self.q[queuepos] = {
 			'source' : source,
@@ -78,8 +93,8 @@ class queue():
 			'times' : {'reg' : time(), 'finished' : None, 'accepted' : None},
 		}
 		times = self.queuetime()
-		if len(times) == 0:
-			return 1, '2 min'
+		if len(times) == 0 and queuepos < working:
+			return queuepos, '~2 min (start walking towards Support@D-Hallen)'
 		else:
 			return (queuepos, ''.join(humantime(times[task[0]])))
 
@@ -136,9 +151,9 @@ class queue():
 		finished = []
 		for i in range(0, self.settings['queuepos']+1):
 			if self.q[i]['times']['accepted'] and not self.q[i]['times']['finished']:
-				accepted.append('accepted:' + self.q[i]['identifier'] + '@' + self.q[i]['source'])
+				accepted.append(str(i) + 'accepted:' + self.q[i]['identifier'] + '@' + self.q[i]['source'])
 			elif self.q[i]['times']['accepted'] and self.q[i]['times']['finished']:
-				finished.append('finished:' + self.q[i]['identifier'] + '@' + self.q[i]['source'])
+				finished.append(str(i) + 'finished:' + self.q[i]['identifier'] + '@' + self.q[i]['source'])
 			else:
 				unaccepted.append(str(i) + ':unaccepted:' + self.q[i]['identifier'] + '@' + self.q[i]['source'])
 

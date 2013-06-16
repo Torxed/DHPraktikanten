@@ -133,13 +133,52 @@ class main(Thread, asyncore.dispatcher):
 			if '%%' in data:
 				## All messages containing %% is a specific request for a specific task
 				_id, data = data.split('%%',1)
-				self.sender.send(_id + '%%' + '')
+				if '::' in data:
+					params = data.split('::')
+					if params[0] == 'update':
+						if params[1] == 'queue':
+							update = core['pickle_ignore']['queue'].accept_name(params[2])
+							if update[0] != None:
+								if not 'global_push' in core['pickle_ignore']:
+									core['pickle_ignore']['global_push'] = {}
+								if not 'queue' in core['pickle_ignore']['global_push']:
+									core['pickle_ignore']['global_push']['queue'] = [3, '']
+								
+								core['pickle_ignore']['global_push']['queue'][1] = core['pickle_ignore']['global_push']['queue'][1].replace(str(update[0]) + ':unaccepted:'+update[1], str(update[0]) + ':accepted:'+update[1])
+								#core['pickle_ignore']['global_push']['queue'][1] = core['pickle_ignore']['global_push']['queue'][1] + ';' + str(update[0]) + ':accepted:'+update[1]
+								#if core['pickle_ignore']['global_push']['queue'][1][0] == ';':
+								#	core['pickle_ignore']['global_push']['queue'][1] = core['pickle_ignore']['global_push']['queue'][1][1:]
+							else:
+								update = core['pickle_ignore']['queue'].complete_name(params[2])
+								if update[0] != None:
+									if not 'global_push' in core['pickle_ignore']:
+										core['pickle_ignore']['global_push'] = {}
+									if not 'queue' in core['pickle_ignore']['global_push']:
+										core['pickle_ignore']['global_push']['queue'] = [3, '']
+									
+									core['pickle_ignore']['global_push']['queue'][1] = core['pickle_ignore']['global_push']['queue'][1].replace(str(update[0]) + ':accepted:'+update[1], str(update[0]) + ':done:'+update[1]) 
+					elif params[0] == 'get':
+						if params[1] == 'history':
+							if params[2] == 'irc':
+								print 'Building irc logs...'
+								ret = ''
+								if 'logs' in core['pickle_ignore'] and 'irc' in core['pickle_ignore']['logs']:
+									print 'The logs are here:',core['pickle_ignore']['logs']['irc']
+									for obj in core['pickle_ignore']['logs']['irc'][-5:]:
+										ret += obj[0] + ':' + obj[1] + ';'
+									self.sender.send(_id + '%%' + ret[:-1] + '\n')
+								else:
+									print 'No logs...', core['pickle_ignore']
+									self.sender.send(_id + '%%' + ret + '\n')
+
+				else:
+					self.sender.send(_id + '%%' + '')
 			else:
 				_id = '3'
 
-			params = data.split('::')
-			if params[0] == 'register':
-				self.sender.send(_id + '%%' + encrypt('queue::' + ';'.join(core['pickle_ignore']['queue']._get()) + '\n', secret))
+				params = data.split('::')
+				if params[0] == 'register':
+					self.sender.send(_id + '%%' + encrypt('queue::' + ';'.join(core['pickle_ignore']['queue']._get()) + '\n', secret))
 			"""
 			params = data.split('::')
 			if params[0] == 'get':
