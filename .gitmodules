@@ -1,3 +1,6 @@
 [submodule "code/slimHTTP"]
 	path = code/slimHTTP
 	url = git@github.com:Torxed/slimHTTP.git
+[submodule "code/slimDHCP"]
+	path = code/slimDHCP
+	url = git@github.com:Torxed/slimDHCP.git
