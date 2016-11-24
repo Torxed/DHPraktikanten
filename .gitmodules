@@ -1,0 +1,3 @@
+[submodule "code/slimHTTP"]
+	path = code/slimHTTP
+	url = git@github.com:Torxed/slimHTTP.git
